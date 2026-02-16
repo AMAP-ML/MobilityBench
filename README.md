@@ -1,5 +1,7 @@
 # MobilityBench
 
+> **Note:** This work is currently under review. The full dataset will be released progressively.
+
 A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios.
 
 ## Overview
@@ -252,27 +254,36 @@ MobilityBench proposes a **multi-dimensional evaluation protocol** that goes bey
 
 ## Configuration
 
-### Dataset Format
+### Dataset
 
-MobilityBench supports CSV datasets. The recommended format is CSV with the following key fields:
+MobilityBench dataset is collected from real-world anonymized user queries from **Amap**. We currently provide **sample data** for demonstration purposes. The full dataset will be released progressively.
+
+>**Dataset file path**: /data/datasets/sample_10.csv
+
+#### Sample Data (5 Examples)
+
+| Query | Task Scenario | Intent Family |
+|-------|---------------|---------------|
+| 去大石桥不走高速 | Option-Constrained Route Planning | Preference-Constrained Route Planning |
+| 现在成都大道会堵车吗？看一下地图，会不会堵 | Traffic Info Query | Basic Route Planning |
+| 我在哪 | Geolocation Query | Basic Information Retrieval |
+| 知道离滇池会展中心有多远 | Route Property Query | Route-Dependent Information Retrieval |
+| 到寨河收费站入口不走高速 | Option-Constrained Route Planning | Preference-Constrained Route Planning |
+
+#### Data Format
+
+The dataset is provided in CSV format with the following key fields:
 
 | Field | Description |
 |-------|-------------|
-| `query` | User query text |
-| `context` | Context information (JSON string, e.g. current location, city) |
+| `query` | User query text (Chinese) |
+| `context` | Context information (JSON, e.g., current location, city) |
+| `task_scenario` | Fine-grained task category |
+| `intent_family` | Coarse-grained intent category for evaluation aggregation |
+| `tool_list` | Expected tool calls (JSON array) |
+| `route_ans` | Ground truth route answer (JSON) |
 
 
-### Directory Structure
-
-```
-configs/
-├── models/
-│   └── default.yaml      # Model configurations
-├── datasets/
-│   └── mobility_6262.yaml # Dataset specifications
-└── evaluation/
-    └── default.yaml      # Evaluation parameters
-```
 
 ### Model Configuration
 
