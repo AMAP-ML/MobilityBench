@@ -5,12 +5,21 @@ This module handles agent batch running with support for
 multiple models, parallel execution, and checkpoint resumption.
 """
 
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
+from rich.table import Table
 
 console = Console()
 
@@ -125,14 +134,78 @@ def run_benchmark(
 
     # Execute run
     console.print("\n[bold]Starting run...[/bold]")
+
+    # Track per-model statistics
+    model_stats: dict[str, dict] = {}
+    model_tasks: dict[str, int] = {}
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task(f"Running {len(model_list)} models...", total=None)
-        runner.run(cases, resume_from=resume)
-        progress.update(task, completed=True)
+
+        def _progress_callback(event, model_name, case_id, current, total, status):
+            if event == "start_model":
+                task_id = progress.add_task(
+                    f"[cyan]{model_name}[/cyan]  Preparing...",
+                    total=total,
+                )
+                model_tasks[model_name] = task_id
+                model_stats[model_name] = {
+                    "total": total,
+                    "success": 0,
+                    "failed": 0,
+                    "start_time": time.time(),
+                }
+            elif event == "case_complete":
+                task_id = model_tasks.get(model_name)
+                stats = model_stats.get(model_name, {})
+                if status == "success":
+                    stats["success"] = stats.get("success", 0) + 1
+                else:
+                    stats["failed"] = stats.get("failed", 0) + 1
+                if task_id is not None:
+                    progress.update(
+                        task_id,
+                        advance=1,
+                        description=(
+                            f"[cyan]{model_name}[/cyan]  "
+                            f"[green]{stats.get('success', 0)}[/green]"
+                            f"[red]{'/' + str(stats.get('failed', 0)) if stats.get('failed') else ''}[/red]"
+                            f"  {case_id}"
+                        ),
+                    )
+
+        runner.run(cases, resume_from=resume, progress_callback=_progress_callback)
+
+    # Print summary table
+    if model_stats:
+        console.print()
+        table = Table(title="Run Summary", show_header=True, header_style="bold magenta")
+        table.add_column("Model", style="cyan")
+        table.add_column("Total", justify="right")
+        table.add_column("Success", justify="right", style="green")
+        table.add_column("Failed", justify="right", style="red")
+        table.add_column("Time", justify="right")
+
+        for model_name, stats in model_stats.items():
+            elapsed = time.time() - stats.get("start_time", time.time())
+            mins, secs = divmod(int(elapsed), 60)
+            hours, mins = divmod(mins, 60)
+            time_str = f"{hours}:{mins:02d}:{secs:02d}" if hours else f"{mins}:{secs:02d}"
+            table.add_row(
+                model_name,
+                str(stats["total"]),
+                str(stats["success"]),
+                str(stats["failed"]),
+                time_str,
+            )
+        console.print(table)
 
     # Output summary
     console.print("\n[bold green]Run completed![/bold green]")

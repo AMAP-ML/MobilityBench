@@ -69,6 +69,7 @@ class AnswerMetric(BaseMetric):
             score=0.0,
             details={
                 "source_file": source_file,
+                "intent_family": ground_truth.get("intent_family", ""),
                 "llm_class": llm_class,
                 "delivery_success": delivery_success,
                 "answer_accuracy": accuracy,

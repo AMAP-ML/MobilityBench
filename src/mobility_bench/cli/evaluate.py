@@ -120,15 +120,62 @@ def run_evaluation(
 
 def _display_results_summary(results: dict, summary: dict):
     """Display evaluation results summary with sub-dimensions."""
-    console.print("\n[bold]Evaluation Results Summary[/bold]")
+    overall = summary.get("overall", {})
+    by_intent_family = summary.get("by_intent_family", {})
 
     # Collect all model names
     model_names = set()
-    for metric_models in summary.values():
+    for metric_models in overall.values():
         if isinstance(metric_models, dict):
             model_names.update(metric_models.keys())
     model_names = sorted(model_names)
 
+    # --- Overall summary table ---
+    console.print("\n[bold]Overall Evaluation Results[/bold]")
+    _print_sub_dim_table(results, overall, model_names)
+
+    # --- Per intent_family tables ---
+    if by_intent_family:
+        console.print("\n[bold]Evaluation Results by Intent Family[/bold]")
+
+        for family_name in sorted(by_intent_family.keys()):
+            family_metrics = by_intent_family[family_name]
+            console.print(f"\n[bold cyan]  [{family_name}][/bold cyan]")
+
+            _print_sub_dim_table(
+                results, family_metrics, model_names,
+                get_cases_fn=lambda mr, mn: _get_family_cases(mr, mn, family_name),
+            )
+
+
+def _get_family_cases(metric_result: dict, metric_name: str, family_name: str) -> str:
+    """Get total_cases for a specific intent_family."""
+    mr = metric_result.get(metric_name, {})
+    for model_result in mr.values():
+        if isinstance(model_result, dict):
+            by_fam = model_result.get("by_intent_family", {})
+            fam_summary = by_fam.get(family_name)
+            if fam_summary:
+                return str(fam_summary.total_cases)
+    return "N/A"
+
+
+def _format_value(value) -> str:
+    """Format a numeric value for display."""
+    if isinstance(value, float):
+        return f"{value:.0f}" if value > 100 else f"{value:.4f}"
+    elif isinstance(value, int):
+        return str(value)
+    return str(value)
+
+
+def _print_sub_dim_table(
+    results: dict,
+    metric_summary: dict,
+    model_names: list[str],
+    get_cases_fn=None,
+):
+    """Print a sub-dimension table for given metric summary data."""
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Sub-dimension", style="white")
@@ -136,47 +183,41 @@ def _display_results_summary(results: dict, summary: dict):
         table.add_column(model_name, justify="right")
     table.add_column("Cases", justify="right", style="dim")
 
-    for metric_name, metric_models in summary.items():
+    for metric_name, metric_models in metric_summary.items():
         if not isinstance(metric_models, dict):
             continue
 
-        # Get total_cases for this metric
-        total_cases = "N/A"
-        metric_result = results.get(metric_name, {})
-        for model_result in metric_result.values():
-            if isinstance(model_result, dict) and "summary" in model_result:
-                total_cases = str(model_result["summary"].total_cases)
-                break
+        # Get total_cases
+        if get_cases_fn:
+            total_cases = get_cases_fn(results, metric_name)
+        else:
+            total_cases = "N/A"
+            metric_result = results.get(metric_name, {})
+            for model_result in metric_result.values():
+                if isinstance(model_result, dict) and "summary" in model_result:
+                    total_cases = str(model_result["summary"].total_cases)
+                    break
 
-        # Collect all sub-dimensions across models
+        # Collect sub-dimensions: handle both direct dict and nested {sub_scores, total_cases}
         all_sub_dims = []
-        for model_sub_scores in metric_models.values():
-            if isinstance(model_sub_scores, dict):
-                for dim in model_sub_scores:
-                    if dim not in all_sub_dims:
+        for model_data in metric_models.values():
+            sub_scores = model_data.get("sub_scores", model_data) if isinstance(model_data, dict) else {}
+            if isinstance(sub_scores, dict):
+                for dim in sub_scores:
+                    if dim not in all_sub_dims and dim != "total_cases":
                         all_sub_dims.append(dim)
 
         for i, sub_dim in enumerate(all_sub_dims):
-            # Show metric name only on first sub-dimension row
             row_metric = metric_name if i == 0 else ""
             row = [row_metric, sub_dim]
             for model_name in model_names:
-                model_sub = metric_models.get(model_name, {})
-                value = model_sub.get(sub_dim, "N/A") if isinstance(model_sub, dict) else "N/A"
-                if isinstance(value, float):
-                    # Use integer format for large numbers (tokens)
-                    if value > 100:
-                        row.append(f"{value:.0f}")
-                    else:
-                        row.append(f"{value:.4f}")
-                elif isinstance(value, int):
-                    row.append(str(value))
-                else:
-                    row.append(str(value))
+                model_data = metric_models.get(model_name, {})
+                sub_scores = model_data.get("sub_scores", model_data) if isinstance(model_data, dict) else {}
+                value = sub_scores.get(sub_dim, "N/A") if isinstance(sub_scores, dict) else "N/A"
+                row.append(_format_value(value))
             row.append(total_cases if i == 0 else "")
             table.add_row(*row)
 
-        # Add separator between metrics
         if all_sub_dims:
             table.add_row(*[""] * (3 + len(model_names)), end_section=True)
 

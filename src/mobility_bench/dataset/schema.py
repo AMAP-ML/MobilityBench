@@ -37,8 +37,16 @@ class Case:
     query: str
     context: str = ""
     source_file: str = ""
+    task_scenario: str = ""
+    intent_family: str = ""
     ground_truth: GroundTruth | None = None
     metadata: dict = field(default_factory=dict)
+
+    # Fields that belong to Case directly (not metadata)
+    _CASE_FIELDS = {
+        "case_id", "Case ID", "query", "user_query", "context",
+        "source_file", "task_scenario", "intent_family",
+    }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Case":
@@ -52,11 +60,12 @@ class Case:
             query=data.get("query", data.get("user_query", "")),
             context=data.get("context", ""),
             source_file=data.get("source_file", ""),
+            task_scenario=data.get("task_scenario", ""),
+            intent_family=data.get("intent_family", ""),
             ground_truth=GroundTruth.from_dict(gt_data) if gt_data else None,
-            metadata={k: v for k, v in data.items() if k not in [
-                "case_id", "Case ID", "query", "user_query", "context",
-                "source_file", *gt_fields
-            ]},
+            metadata={k: v for k, v in data.items() if k not in (
+                cls._CASE_FIELDS | set(gt_fields)
+            )},
         )
 
     def to_dict(self) -> dict:
@@ -66,6 +75,8 @@ class Case:
             "query": self.query,
             "context": self.context,
             "source_file": self.source_file,
+            "task_scenario": self.task_scenario,
+            "intent_family": self.intent_family,
         }
         if self.ground_truth:
             result.update({

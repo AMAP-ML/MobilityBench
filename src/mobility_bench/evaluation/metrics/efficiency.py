@@ -48,6 +48,7 @@ class EfficiencyMetric(BaseMetric):
             score=0.0,
             details={
                 "source_file": ground_truth.get("source_file", ""),
+                "intent_family": ground_truth.get("intent_family", ""),
                 "total_tokens": total_tokens,
                 "planner_tokens": planner_tokens,
                 "worker_tokens": worker_tokens,

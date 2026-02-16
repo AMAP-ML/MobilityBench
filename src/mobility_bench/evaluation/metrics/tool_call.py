@@ -61,6 +61,7 @@ class ToolCallMetric(BaseMetric):
             score=0.0,
             details={
                 "source_file": ground_truth.get("source_file", ""),
+                "intent_family": ground_truth.get("intent_family", ""),
                 "tool_selection_coverage": metrics["tool_selection"]["coverage"],
                 "tool_selection_redundancy": metrics["tool_selection"]["redundancy"],
                 "schema_compliance_rate": metrics["schema"]["compliance_rate"],

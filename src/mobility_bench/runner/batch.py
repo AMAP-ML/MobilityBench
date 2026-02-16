@@ -42,12 +42,15 @@ class BatchRunner(BaseRunner):
         self,
         cases: list[Case],
         resume_from: str | None = None,
+        progress_callback=None,
     ) -> dict[str, list[RunResult]]:
         """Run all models.
 
         Args:
             cases: List of test cases
             resume_from: Run ID to resume from
+            progress_callback: Optional callback for progress reporting.
+                Signature: (event, model_name, case_id, current, total, status)
 
         Returns:
             Results dictionary organized by model name
@@ -75,11 +78,18 @@ class BatchRunner(BaseRunner):
             pending_cases = [c for c in cases if c.case_id not in completed]
             logger.info(f"Pending cases: {len(pending_cases)}")
 
+            # Notify start_model
+            if progress_callback:
+                progress_callback(
+                    "start_model", model_name,
+                    "", 0, len(pending_cases), "",
+                )
+
             # Run
             if self.parallel > 1:
-                results = self._run_parallel(pending_cases, config)
+                results = self._run_parallel(pending_cases, config, progress_callback)
             else:
-                results = self._run_sequential(pending_cases, config)
+                results = self._run_sequential(pending_cases, config, progress_callback)
 
             # Save results
             self.save_results(results, self.output_dir, model_name)
@@ -96,17 +106,21 @@ class BatchRunner(BaseRunner):
         self,
         cases: list[Case],
         config: RunConfig,
+        progress_callback=None,
     ) -> list[RunResult]:
         """Sequential run."""
-        return self.run_batch(cases, config)
+        return self.run_batch(cases, config, progress_callback)
 
     def _run_parallel(
         self,
         cases: list[Case],
         config: RunConfig,
+        progress_callback=None,
     ) -> list[RunResult]:
         """Parallel run."""
         results = []
+        total = len(cases)
+        completed_count = 0
 
         with ThreadPoolExecutor(max_workers=self.parallel) as executor:
             futures = {
@@ -116,9 +130,11 @@ class BatchRunner(BaseRunner):
 
             for future in as_completed(futures):
                 case = futures[future]
+                completed_count += 1
                 try:
                     result = future.result()
                     results.append(result)
+                    status = "failed" if result.error else "success"
                 except Exception as e:
                     logger.error(f"Run failed {case.case_id}: {e}")
                     results.append(RunResult(
@@ -126,6 +142,13 @@ class BatchRunner(BaseRunner):
                         model_name=config.model_name,
                         error=str(e),
                     ))
+                    status = "failed"
+
+                if progress_callback:
+                    progress_callback(
+                        "case_complete", config.model_name,
+                        case.case_id, completed_count, total, status,
+                    )
 
         return results
 
@@ -264,7 +287,8 @@ class SingleModelRunner(BatchRunner):
         self,
         cases: list[Case],
         resume_from: str | None = None,
+        progress_callback=None,
     ) -> list[RunResult]:
         """Run single model."""
-        all_results = super().run(cases, resume_from)
+        all_results = super().run(cases, resume_from, progress_callback)
         return all_results.get(self.models[0], [])

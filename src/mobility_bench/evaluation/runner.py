@@ -109,9 +109,6 @@ class EvaluationRunner:
             return pd.read_csv(path)
         return pd.DataFrame()
 
-        # Load model outputs
-        self.model_outputs = self._load_model_outputs()
-
     # Directories to skip when scanning for model outputs
     _SKIP_DIRS = {"evaluation", "comparison", "reports", "__pycache__"}
 
@@ -323,12 +320,12 @@ class EvaluationRunner:
             summary = metric.aggregate(metric_results)
 
             # Aggregate by category
-            by_source = metric.aggregate_by_category(metric_results, "source_file")
+            by_intent_family = metric.aggregate_by_category(metric_results, "intent_family")
 
             results[model_name] = {
                 "results": metric_results,
                 "summary": summary,
-                "by_source": by_source,
+                "by_intent_family": by_intent_family,
             }
 
             # Save detailed results
@@ -406,6 +403,8 @@ class EvaluationRunner:
             gt = {
                 "case_id": case.case_id,
                 "source_file": case.source_file,
+                "task_scenario": case.task_scenario,
+                "intent_family": case.intent_family,
             }
 
             if case.ground_truth:
@@ -426,35 +425,74 @@ class EvaluationRunner:
             results: Evaluation results for each metric
 
         Returns:
-            Summary with sub_scores per model per metric:
-            {metric_name: {model_name: {sub_dim: value, ...}}}
+            {
+                "overall": {metric: {model: {sub_dim: value}}},
+                "by_intent_family": {intent_family: {metric: {model: {sub_dim: value}}}},
+            }
         """
-        summary = {}
+        overall = {}
+        by_intent_family: dict[str, dict] = {}
 
         for metric_name, metric_results in results.items():
-            summary[metric_name] = {}
+            overall[metric_name] = {}
 
             for model_name, model_results in metric_results.items():
+                # Overall sub_scores
                 model_summary = model_results.get("summary")
                 if model_summary and model_summary.sub_scores:
-                    summary[metric_name][model_name] = model_summary.sub_scores
+                    overall[metric_name][model_name] = model_summary.sub_scores
 
-        return summary
+                # Per intent_family sub_scores
+                by_family = model_results.get("by_intent_family", {})
+                for family_name, family_summary in by_family.items():
+                    if not family_name:
+                        continue
+                    if family_name not in by_intent_family:
+                        by_intent_family[family_name] = {}
+                    if metric_name not in by_intent_family[family_name]:
+                        by_intent_family[family_name][metric_name] = {}
+                    if family_summary.sub_scores:
+                        by_intent_family[family_name][metric_name][model_name] = {
+                            "sub_scores": family_summary.sub_scores,
+                            "total_cases": family_summary.total_cases,
+                        }
+
+        return {"overall": overall, "by_intent_family": by_intent_family}
 
     def save_results(self, results: dict, summary: dict):
         """Save evaluation results.
 
         Args:
             results: Detailed results
-            summary: Summary results (sub_scores per metric per model)
+            summary: Aggregated summary with overall and by_intent_family
         """
-        # Save summary table with sub-dimensions
+        overall = summary.get("overall", {})
+        by_intent_family = summary.get("by_intent_family", {})
+
+        # Build summary records
         summary_records = []
-        for metric_name, metric_models in summary.items():
+
+        # Overall rows (intent_family = "")
+        for metric_name, metric_models in overall.items():
             for model_name, sub_scores in metric_models.items():
                 if isinstance(sub_scores, dict):
                     for sub_dim, value in sub_scores.items():
                         summary_records.append({
+                            "intent_family": "",
+                            "metric": metric_name,
+                            "sub_dimension": sub_dim,
+                            "model": model_name,
+                            "value": value,
+                        })
+
+        # Per intent_family rows
+        for family_name, family_metrics in by_intent_family.items():
+            for metric_name, metric_models in family_metrics.items():
+                for model_name, model_data in metric_models.items():
+                    sub_scores = model_data.get("sub_scores", {})
+                    for sub_dim, value in sub_scores.items():
+                        summary_records.append({
+                            "intent_family": family_name,
                             "metric": metric_name,
                             "sub_dimension": sub_dim,
                             "model": model_name,
@@ -474,8 +512,13 @@ class EvaluationRunner:
             for metric_name, metric_results in results.items():
                 serializable[metric_name] = {}
                 for model_name, model_results in metric_results.items():
+                    by_family_ser = {}
+                    for fam, fam_summary in model_results.get("by_intent_family", {}).items():
+                        if fam:
+                            by_family_ser[fam] = fam_summary.to_dict()
                     serializable[metric_name][model_name] = {
                         "summary": model_results["summary"].to_dict() if model_results.get("summary") else None,
+                        "by_intent_family": by_family_ser,
                     }
             json.dump(serializable, f, ensure_ascii=False, indent=2)
         logger.info(f"Detailed results saved to: {results_file}")

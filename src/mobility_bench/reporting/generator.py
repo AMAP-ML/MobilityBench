@@ -104,13 +104,35 @@ class ReportGenerator:
         lines.append(f"Run directory: `{self.run_dir}`")
         lines.append("")
 
-        # Overall summary with sub-dimensions
-        lines.append("## Evaluation Results Summary")
+        # Overall summary
+        lines.append("## Overall Evaluation Results")
         lines.append("")
 
         if not summary_df.empty:
-            lines.append(summary_df.to_markdown(index=False))
-            lines.append("")
+            if "intent_family" in summary_df.columns:
+                overall_df = summary_df[summary_df["intent_family"].isna() | (summary_df["intent_family"] == "")]
+            else:
+                overall_df = summary_df
+            if not overall_df.empty:
+                display_cols = [c for c in overall_df.columns if c != "intent_family"]
+                lines.append(overall_df[display_cols].to_markdown(index=False))
+                lines.append("")
+
+        # Per intent_family summary
+        if not summary_df.empty and "intent_family" in summary_df.columns:
+            family_df = summary_df[summary_df["intent_family"].notna() & (summary_df["intent_family"] != "")]
+            if not family_df.empty:
+                families = sorted(family_df["intent_family"].unique())
+                lines.append("## Evaluation Results by Intent Family")
+                lines.append("")
+
+                for family in families:
+                    lines.append(f"### {family}")
+                    lines.append("")
+                    fdf = family_df[family_df["intent_family"] == family]
+                    display_cols = [c for c in fdf.columns if c != "intent_family"]
+                    lines.append(fdf[display_cols].to_markdown(index=False))
+                    lines.append("")
 
         # Details for each metric
         for metric_name, metric_results in results.items():
@@ -137,12 +159,10 @@ class ReportGenerator:
                         lines.append("|:---|---:|")
                         for dim, value in sub_scores.items():
                             if isinstance(value, float):
-                                if value > 100:
-                                    lines.append(f"| {dim} | {value:.0f} |")
-                                else:
-                                    lines.append(f"| {dim} | {value:.4f} |")
+                                fmt = f"{value:.0f}" if value > 100 else f"{value:.4f}"
                             else:
-                                lines.append(f"| {dim} | {value} |")
+                                fmt = str(value)
+                            lines.append(f"| {dim} | {fmt} |")
                         lines.append("")
 
         # Comparison analysis
@@ -198,8 +218,25 @@ class ReportGenerator:
 
         # Summary table
         if not summary_df.empty:
-            html_parts.append("<h2>Evaluation Results Summary</h2>")
-            html_parts.append(summary_df.to_html(classes="summary-table", index=False))
+            html_parts.append("<h2>Overall Evaluation Results</h2>")
+            if "intent_family" in summary_df.columns:
+                overall_df = summary_df[summary_df["intent_family"].isna() | (summary_df["intent_family"] == "")]
+            else:
+                overall_df = summary_df
+            if not overall_df.empty:
+                display_cols = [c for c in overall_df.columns if c != "intent_family"]
+                html_parts.append(overall_df[display_cols].to_html(classes="summary-table", index=False))
+
+            # Per intent_family
+            if "intent_family" in summary_df.columns:
+                family_df = summary_df[summary_df["intent_family"].notna() & (summary_df["intent_family"] != "")]
+                if not family_df.empty:
+                    html_parts.append("<h2>Evaluation Results by Intent Family</h2>")
+                    for family in sorted(family_df["intent_family"].unique()):
+                        html_parts.append(f"<h3>{family}</h3>")
+                        fdf = family_df[family_df["intent_family"] == family]
+                        display_cols = [c for c in fdf.columns if c != "intent_family"]
+                        html_parts.append(fdf[display_cols].to_html(classes="summary-table", index=False))
 
         # Details for each metric
         for metric_name, metric_results in results.items():
@@ -255,7 +292,20 @@ class ReportGenerator:
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
             # Summary table with sub-dimensions
             if not summary_df.empty:
-                summary_df.to_excel(writer, sheet_name="Summary", index=False)
+                # Overall sheet
+                if "intent_family" in summary_df.columns:
+                    overall_df = summary_df[summary_df["intent_family"].isna() | (summary_df["intent_family"] == "")]
+                else:
+                    overall_df = summary_df
+                if not overall_df.empty:
+                    display_cols = [c for c in overall_df.columns if c != "intent_family"]
+                    overall_df[display_cols].to_excel(writer, sheet_name="Overall", index=False)
+
+                # Per intent_family sheet
+                if "intent_family" in summary_df.columns:
+                    family_df = summary_df[summary_df["intent_family"].notna() & (summary_df["intent_family"] != "")]
+                    if not family_df.empty:
+                        family_df.to_excel(writer, sheet_name="By Intent Family", index=False)
 
             # Details for each metric
             for metric_name, metric_results in results.items():

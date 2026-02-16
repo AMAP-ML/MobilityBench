@@ -86,6 +86,7 @@ class InstructionMetric(BaseMetric):
             score=0.0,
             details={
                 "source_file": ground_truth.get("source_file", ""),
+                "intent_family": ground_truth.get("intent_family", ""),
                 "llm_class": llm_class,
                 "intent_score": intent_score,
                 "intent_correct": intent_correct,

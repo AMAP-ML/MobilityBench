@@ -82,6 +82,16 @@ class DatasetLoader:
         else:
             raise ValueError("Invalid JSON format, expected list or dict with 'cases' key")
 
+    # Fields that may contain JSON strings in CSV/Excel
+    _JSON_FIELDS = [
+        "tool_list", "poi_result", "route_ans",
+        "strategy_list", "context",
+        "std_start", "std_transit", "std_end",
+        "near_poi_info", "near_poi_ans",
+        "bus_lines_list", "query_poi",
+        "weather", "location_ans", "ans_loc",
+    ]
+
     def _df_to_cases(self, df: pd.DataFrame) -> list[Case]:
         """Convert DataFrame to list of Cases."""
         cases = []
@@ -93,14 +103,15 @@ class DatasetLoader:
         for _, row in df.iterrows():
             data = row.to_dict()
 
-            # Process tool_list field (may be JSON string)
-            if "tool_list" in data:
-                data["tool_list"] = self._parse_json_field(data["tool_list"])
-
-            # Process other potential JSON fields
-            for field in ["poi_result", "route_ans"]:
+            # Parse potential JSON string fields
+            for field in self._JSON_FIELDS:
                 if field in data:
                     data[field] = self._parse_json_field(data[field])
+
+            # Replace NaN values with appropriate defaults
+            for key, value in data.items():
+                if pd.isna(value) if isinstance(value, float) else False:
+                    data[key] = ""
 
             cases.append(Case.from_dict(data))
 

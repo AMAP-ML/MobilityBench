@@ -80,7 +80,7 @@ class PlanningMetric(BaseMetric):
                 case_id=case_id,
                 metric_name=self.name,
                 score=1.0,
-                details={"source_file": source_file, "note": "No standard configuration"},
+                details={"source_file": source_file, "intent_family": ground_truth.get("intent_family", ""), "note": "No standard configuration"},
             )
 
         # Extract steps from prediction text
@@ -98,6 +98,7 @@ class PlanningMetric(BaseMetric):
             score=0.0,
             details={
                 "source_file": source_file,
+                "intent_family": ground_truth.get("intent_family", ""),
                 "pred_steps": pred_steps,
                 "gold_steps": gold_steps,
                 "DEC_Recall": dec_recall,

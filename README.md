@@ -99,7 +99,7 @@ LLM_API_KEY=your-api-key
 
 ```bash
 # Run benchmark with default settings (plan_and_execute framework)
-mbench run --model gpt4.1 --dataset data/dataset/test01.xlsx
+mbench run --model gpt4.1 --dataset data/dataset/sample_10.csv
 
 # Run with ReAct framework
 mbench run --model gpt4.1 --framework react

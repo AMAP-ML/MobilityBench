@@ -53,22 +53,27 @@ class BaseRunner(ABC):
         self,
         cases: list[Case],
         config: RunConfig,
+        progress_callback=None,
     ) -> list[RunResult]:
         """Batch run.
 
         Args:
             cases: List of test cases
             config: Run configuration
+            progress_callback: Optional callback for progress reporting.
+                Signature: (event, model_name, case_id, current, total, status)
 
         Returns:
             List of run results
         """
         results = []
+        total = len(cases)
         for i, case in enumerate(cases):
-            logger.info(f"Running {i+1}/{len(cases)}: {case.case_id}")
+            logger.info(f"Running {i+1}/{total}: {case.case_id}")
             try:
                 result = self.run_single(case, config)
                 results.append(result)
+                status = "failed" if result.error else "success"
             except Exception as e:
                 logger.error(f"Run failed {case.case_id}: {e}")
                 results.append(RunResult(
@@ -76,6 +81,13 @@ class BaseRunner(ABC):
                     model_name=config.model_name,
                     error=str(e),
                 ))
+                status = "failed"
+
+            if progress_callback:
+                progress_callback(
+                    "case_complete", config.model_name,
+                    case.case_id, i + 1, total, status,
+                )
 
         return results
 
