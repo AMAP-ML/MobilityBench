@@ -6,11 +6,11 @@ from mobility_bench.evaluation.base import BaseMetric, MetricResult
 
 
 class AnswerMetric(BaseMetric):
-    """Answer accuracy evaluation metric.
+    """Decision making / outcome quality evaluation metric.
 
     Evaluation dimensions:
-    - answer_accuracy: Answer accuracy rate
-    - delivery_success: Delivery success rate
+    - DR: Delivery Rate - whether agent produces complete, executable output
+    - FPR: Final Pass Rate - whether solution satisfies all user constraints
     """
 
     name = "answer"
@@ -71,8 +71,8 @@ class AnswerMetric(BaseMetric):
                 "source_file": source_file,
                 "intent_family": ground_truth.get("intent_family", ""),
                 "llm_class": llm_class,
-                "delivery_success": delivery_success,
-                "answer_accuracy": accuracy,
+                "DR": 1.0 if delivery_success else 0.0,
+                "FPR": accuracy,
             },
         )
 

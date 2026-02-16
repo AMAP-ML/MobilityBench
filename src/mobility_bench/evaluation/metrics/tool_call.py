@@ -9,11 +9,9 @@ class ToolCallMetric(BaseMetric):
     """Tool call evaluation metric.
 
     Evaluation dimensions:
-    - tool_selection_coverage: Tool selection coverage rate
-    - tool_selection_redundancy: Tool selection redundancy rate
-    - schema_compliance_rate: Schema compliance rate
-    - schema_extra_field_penalty: Extra field penalty
-    - parameter_filling_accuracy: Parameter filling accuracy
+    - TS_P: Tool Selection Precision (Coverage) - fraction of required tools selected
+    - TS_R: Tool Selection Recall (Non-redundancy) - 1 minus redundancy rate
+    - SC: Schema Compliance - averaged compliance across all tool calls
     """
 
     name = "tool"
@@ -62,11 +60,9 @@ class ToolCallMetric(BaseMetric):
             details={
                 "source_file": ground_truth.get("source_file", ""),
                 "intent_family": ground_truth.get("intent_family", ""),
-                "tool_selection_coverage": metrics["tool_selection"]["coverage"],
-                "tool_selection_redundancy": metrics["tool_selection"]["redundancy"],
-                "schema_compliance_rate": metrics["schema"]["compliance_rate"],
-                "schema_extra_field_penalty": metrics["schema"]["extra_field_penalty"],
-                "parameter_filling_accuracy": metrics["parameter_filling"],
+                "TS_P": metrics["tool_selection"]["coverage"],
+                "TS_R": 1.0 - metrics["tool_selection"]["redundancy"],
+                "SC": metrics["schema"]["all_score"],
             },
         )
 

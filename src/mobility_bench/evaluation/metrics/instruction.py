@@ -8,9 +8,8 @@ class InstructionMetric(BaseMetric):
     """Instruction understanding evaluation metric.
 
     Evaluation dimensions:
-    - intent_score: Intent understanding score (semantic similarity)
-    - intent_correct: Whether intent is correct
-    - info_extraction_correct: Whether information extraction is complete
+    - ID: Intent Detection - whether agent correctly identifies query intent (similarity >= threshold)
+    - IE: Information Extraction - whether agent extracts all constraints/slots correctly
     """
 
     name = "instruction"
@@ -88,10 +87,8 @@ class InstructionMetric(BaseMetric):
                 "source_file": ground_truth.get("source_file", ""),
                 "intent_family": ground_truth.get("intent_family", ""),
                 "llm_class": llm_class,
-                "intent_score": intent_score,
-                "intent_correct": intent_correct,
-                "info_extraction_correct": info_extraction_correct,
-                "slots_found": slots_found,
+                "ID": 1.0 if intent_correct else 0.0,
+                "IE": 1.0 if info_extraction_correct else 0.0,
             },
         )
 

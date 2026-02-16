@@ -1,15 +1,18 @@
 # MobilityBench
 
-A comprehensive evaluation framework for Mobility AI Agents, designed to benchmark LLM-based agents on real-world travel and navigation tasks.
+A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios.
 
 ## Overview
 
-MobilityBench provides a standardized benchmark for evaluating AI agents that handle mobility-related tasks such as route planning, POI queries, weather information, and traffic status. The framework supports:
+**MobilityBench** is a scalable benchmark for evaluating LLM-based route-planning agents in real-world mobility scenarios. It is built from large-scale, anonymized user queries collected from **Amap**, covering a wide range of route-planning intents across **multiple cities worldwide**.
 
-- **Multi-model evaluation**: Test multiple LLM models (OpenAI, Anthropic, Google, Qwen) in parallel
-- **Comprehensive metrics**: 5 evaluation dimensions covering tool usage, instruction understanding, planning quality, answer accuracy, and efficiency
-- **Sandbox mode**: Offline evaluation using pre-cached API responses for reproducible results
-- **Flexible configuration**: YAML-based configuration for models, datasets, and evaluation parameters
+To support **reproducible end-to-end evaluation**, MobilityBench includes a **deterministic API-replay sandbox** that removes environmental variance from live services. We also introduce a **multi-dimensional evaluation protocol** centered on **outcome validity**, complemented by evaluations of **instruction understanding**, **planning**, **tool use**, and **efficiency**. 
+
+### Key Features
+
+- **Multi-model evaluation**: Test multiple LLMs (OpenAI, Anthropic, Google, Qwen, DeepSeek) in parallel  
+- **Comprehensive metrics**: Five evaluation dimensions covering instruction understanding, planning quality, tool use, answer accuracy, and efficiency  
+- **Sandbox mode**: Offline evaluation with pre-cached API responses for fully reproducible results
 
 ## Architecture
 
@@ -28,7 +31,7 @@ A **Planner-Worker-Reporter** architecture for structured task execution:
        └───────────────────┴───────────────────┘
                            │
                     ┌──────┴──────┐
-                    │  Tool Kit   │
+                    │  Tool Call   │
                     │ (Map APIs)  │
                     └─────────────┘
 ```
@@ -99,21 +102,21 @@ LLM_API_KEY=your-api-key
 
 ```bash
 # Run benchmark with default settings (plan_and_execute framework)
-mbench run --model gpt4.1 --dataset data/dataset/sample_10.csv
+mbench run --model gpt4.1 --dataset data/datasets/sample_10.csv
 
 # Run with ReAct framework
 mbench run --model gpt4.1 --framework react
 
 # Run multiple models in parallel
-mbench run --model gpt4.1 --model claude-opus-4-5 --workers 4
+mbench run --models gpt4.1,claude-opus-4-5 --parallel 4
 
 # Enable sandbox mode (offline evaluation)
 mbench run --model gpt4.1 --sandbox
 
-# Compare frameworks
-mbench run --model gpt4.1 --framework plan_and_execute --output-dir results/pae
-mbench run --model gpt4.1 --framework react --output-dir results/react
+# Resume an interrupted run
+mbench run --model gpt4.1 --resume run_20260215_120000
 ```
+
 
 ### 3. Evaluate Results
 
@@ -123,6 +126,9 @@ mbench eval --run-id run_20260215_120000
 
 # Evaluate with specific metrics
 mbench eval --run-id run_20260215_120000 --metrics tool,answer,planning
+
+# Evaluate with a specific ground truth file
+mbench eval --run-id run_20260215_120000 --ground-truth data/datasets/sample_10.csv
 ```
 
 ### 4. Generate Reports
@@ -134,8 +140,11 @@ mbench report --run-id run_20260215_120000
 # Generate HTML report
 mbench report --run-id run_20260215_120000 --format html
 
+# Generate Excel report (with Overall and By Intent Family sheets)
+mbench report --run-id run_20260215_120000 --format excel
+
 # Compare multiple runs
-mbench report --run-id run_001 --run-id run_002 --compare
+mbench report --run-id run_001 --compare run_002
 ```
 
 ## CLI Commands
@@ -182,49 +191,76 @@ mbench config validate --config configs/models/default.yaml
 
 ## Evaluation Metrics
 
-MobilityBench evaluates agents across 5 dimensions:
+MobilityBench evaluates agents across 5 dimensions. Each metric reports individual **sub-dimension** scores, and results are aggregated both **overall** and **by intent_family** category.
 
-### 1. Tool Call Metric
+## Evaluation Metrics (MobilityBench)
 
-Evaluates the quality of tool/API calls made by the agent:
+MobilityBench proposes a **multi-dimensional evaluation protocol** that goes beyond end-to-end success rate, measuring an agent’s capabilities across **Instruction Understanding, Planning, Tool Use, Decision Making, and Efficiency**.
 
-- **Coverage**: Percentage of required tools that were called
-- **Redundancy**: Ratio of redundant/unnecessary tool calls
-- **Schema Compliance**: Whether tool parameters match the expected schema
-- **Parameter Accuracy**: Accuracy of parameter values
+### 1) Instruction Understanding
 
-### 2. Instruction Metric
+- **Intent Detection (ID)**  
+  Measures whether the agent correctly identifies the query intent (one of the benchmark’s scenario labels).  
+  *Scoring:* label similarity ≥ threshold.
 
-Measures how well the agent understands user intent:
+- **Information Extraction (IE)**  
+  Measures whether the agent correctly extracts all constraints/slots from the query (e.g., origin/destination, time constraints, preferences).  
+  *Scoring:* exact match between predicted and ground-truth constraint sets.
 
-- Uses semantic similarity (SentenceTransformer) to compare extracted intent with ground truth
-- Configurable similarity threshold (default: 0.7)
+---
 
-### 3. Planning Metric
+### 2) Planning
 
-Evaluates the agent's planning quality using:
+- **Task Decomposition (DEC)**  
+  Measures whether the agent decomposes the task into an appropriate sequence of atomic actions. Reported as two metrics:
+  - **DEC-P (Decomposition Precision / Coverage)**: proportion of ground-truth steps covered by predicted steps  
+  - **DEC-R (Decomposition Recall / Redundancy complement)**: proportion of predicted steps that match ground-truth steps  
+  *(Matching is determined by an action-level equivalence function.)*
 
-- **DEC (Decision Coverage)**: Weighted combination of recall and precision for planning steps
-- **DEP (Decision Efficiency)**: Ratio of optimal steps to actual steps taken
-- Configurable alpha/beta weights for DEC calculation
+---
 
-### 4. Answer Metric
+### 3) Tool Use
 
-Assesses the accuracy of final answers:
+- **Tool Selection (TS)**  
+  Measures whether the agent selects the correct set of tools needed for the task. Reported as:
+  - **TS-P (Tool Coverage)**: fraction of required tools selected
+  - **TS-R (Non-redundancy / 1 - redundancy)**: penalizes unnecessary tool calls
 
-- Task-type specific evaluation (route, POI, weather, etc.)
-- Distance/coordinate tolerance for location-based answers
-- Semantic matching for textual answers
+- **Schema Compliance (SC)**  
+  Measures whether tool/API calls conform to tool specifications (mandatory parameters present, types/formats/ranges valid).  
+  *Scoring:* averaged compliance across all tool calls in an episode.
 
-### 5. Efficiency Metric
+---
 
-Measures resource utilization:
+### 4) Decision Making (Outcome Quality)
 
-- **Token Usage**: Input/output tokens consumed
-- **Execution Time**: Total time to complete the task
-- **Tool Call Count**: Number of API calls made
+- **Delivery Rate (DR)**  
+  Percentage of queries where the agent produces a **complete, executable final output**, without interruption or tool invocation failure.
+
+- **Final Pass Rate (FPR)**  
+  Percentage of queries where the final solution **satisfies all explicit and implicit user constraints** (i.e., a valid final outcome).
+
+---
+
+### 5) Efficiency
+
+- **Input Tokens (IT)**  
+  Total tokens consumed as input context (system prompt + instructions + accumulated action/observation history).
+
+- **Output Tokens (OT)**  
+  Total tokens generated by the model (reflecting generation cost/latency trade-offs).
 
 ## Configuration
+
+### Dataset Format
+
+MobilityBench supports CSV datasets. The recommended format is CSV with the following key fields:
+
+| Field | Description |
+|-------|-------------|
+| `query` | User query text |
+| `context` | Context information (JSON string, e.g. current location, city) |
+
 
 ### Directory Structure
 
@@ -250,9 +286,9 @@ models:
     temperature: 0.1
     max_tokens: 8192
     roles:
-      planner: gpt-4.1
-      worker: gpt-4.1
-      reporter: gpt-4.1
+      planner: gpt-41-0414-global
+      worker: gpt-41-0414-global
+      reporter: gpt-41-0414-global
 ```
 
 ### Environment Variables
@@ -261,8 +297,6 @@ models:
 |----------|-------------|
 | `LLM_BASE_URL` | Base URL for LLM API |
 | `LLM_API_KEY` | API key for authentication |
-| `MB_CONFIG_PATH` | Custom configuration directory |
-| `MB_DATA_PATH` | Custom data directory |
 
 ## Project Structure
 
@@ -303,14 +337,19 @@ mobility-bench/
 │   ├── evaluation/       # Evaluation metrics
 │   │   └── metrics/      # Individual metric implementations
 │   ├── dataset/          # Dataset loading and schema
+│   │   ├── schema.py     # Case, GroundTruth, RunResult dataclasses
+│   │   └── loader.py     # CSV/Excel/JSON loader with JSON field parsing
 │   ├── runner/           # Batch execution runner
-│   ├── reporting/        # Report generators
+│   │   ├── base.py       # BaseRunner with progress callback support
+│   │   └── batch.py      # BatchRunner with parallel execution
+│   ├── reporting/        # Report generators (Markdown/HTML/Excel)
 │   ├── config/           # Configuration management
 │   └── utils/            # Utility functions
 ├── configs/              # YAML configuration files
 ├── data/                 # Datasets and results
+│   ├── datasets/         # CSV/Excel/JSON datasets
 │   ├── sandbox/          # Cached API responses
-│   └── results/          # Evaluation results
+│   └── results/          # Run outputs and evaluation results
 └── tests/                # Unit tests
 ```
 
@@ -318,7 +357,7 @@ mobility-bench/
 
 | Model | Provider | Notes |
 |-------|----------|-------|
-| GPT-4.1 | OpenAI | Latest GPT-4 variant |
+| GPT-4.1 GPT-5.2 | OpenAI | Latest GPT variant |
 | Claude Opus 4.5 | Anthropic | Most capable Claude |
 | Claude Sonnet 4.5 | Anthropic | Balanced performance |
 | Gemini 3 Flash | Google | Fast inference |
@@ -356,35 +395,3 @@ pytest --cov=src/mobility_bench --cov-report=html
 # Run specific test file
 pytest tests/test_evaluation.py
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests and linting (`uv run ruff check src/ && uv run pytest`)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Citation
-
-If you use MobilityBench in your research, please cite:
-
-```bibtex
-@software{mobilitybench2026,
-  title = {MobilityBench: A Comprehensive Evaluation Framework for Mobility AI Agents},
-  year = {2026},
-  url = {https://github.com/your-org/mobility-bench}
-}
-```
-
-## Acknowledgments
-
-- [LangGraph](https://github.com/langchain-ai/langgraph) for agent orchestration
-- [Typer](https://typer.tiangolo.com/) for CLI framework
-- [Rich](https://rich.readthedocs.io/) for terminal formatting

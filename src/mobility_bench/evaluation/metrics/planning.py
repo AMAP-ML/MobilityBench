@@ -9,11 +9,8 @@ class PlanningMetric(BaseMetric):
     """Planning process evaluation metric.
 
     Evaluation dimensions:
-    - DEC_Recall: Decision coverage - recall
-    - DEC_Precision: Decision coverage - precision
-    - DEC_Score: Decision coverage composite score
-    - DEP_Recall: Dependency execution - recall
-    - DEP_Score: Dependency execution composite score
+    - DEC_P: Decomposition Precision - proportion of ground-truth steps covered by predicted steps
+    - DEC_R: Decomposition Recall - proportion of predicted steps that match ground-truth steps
     """
 
     name = "planning"
@@ -89,9 +86,6 @@ class PlanningMetric(BaseMetric):
         # Calculate DEC metric
         dec_recall, dec_precision, dec_score = self._compute_dec(pred_steps, gold_steps)
 
-        # Calculate DEP metric
-        dep_recall, dep_score = self._compute_dep(pred_steps, gold_edges)
-
         return MetricResult(
             case_id=case_id,
             metric_name=self.name,
@@ -99,11 +93,8 @@ class PlanningMetric(BaseMetric):
             details={
                 "source_file": source_file,
                 "intent_family": ground_truth.get("intent_family", ""),
-                "pred_steps": pred_steps,
-                "gold_steps": gold_steps,
-                "DEC_Recall": dec_recall,
-                "DEC_Precision": dec_precision,
-                "DEP_Recall": dep_recall,
+                "DEC_P": dec_precision,
+                "DEC_R": dec_recall,
             },
         )
 
