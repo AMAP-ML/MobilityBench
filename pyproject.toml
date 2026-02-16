@@ -1,0 +1,138 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mobility-bench"
+version = "1.0.0"
+description = "MobilityBench - Mobility Agent Evaluation Framework"
+readme = "README.md"
+requires-python = ">=3.12"
+
+# Core dependencies
+dependencies = [
+    # CLI framework
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pyyaml>=6.0",
+    # Agent framework
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "jinja2>=3.1.6",
+    "langchain>=1.0.0",
+    "langchain-community>=0.4.0",
+    "langchain-core>=1.0.0",
+    "langchain-mcp-adapters>=0.1.9",
+    "langchain-openai>=1.0.0",
+    "langgraph>=1.0.0",
+    "protobuf>=4.25.0",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "python-dotenv>=1.1.1",
+    "requests>=2.25.0",
+    "httpx>=0.24.0",
+    "zstandard>=0.22.0",
+    "uvloop>=0.19.0",
+    # Telemetry
+    "opentelemetry-api>=1.26.0",
+    "opentelemetry-sdk>=1.26.0",
+    "opentelemetry-semantic-conventions>=0.46b0",
+    # Data processing
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "oss2>=2.18.0",
+    # LLM providers
+    "langchain_google_genai>=4.2.0",
+]
+
+# CLI entry point
+[project.scripts]
+mbench = "mobility_bench.cli.main:app"
+
+# Optional dependency groups
+[project.optional-dependencies]
+# Evaluation related
+eval = [
+    "sentence-transformers>=2.2.0",
+    "cpca>=0.5.5",
+]
+
+# Development tools
+dev = [
+    "ruff",
+]
+
+# Testing related
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=1.0.0",
+]
+
+# Full development environment
+all = [
+    "mobility-bench[eval,dev,test]"
+]
+
+# ===== Tool Configuration =====
+
+[tool.uv]
+required-version = ">=0.6.15"
+link-mode = "copy"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=src --cov-report=term-missing"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mobility_bench", "src"]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+extend-include = ["*.pyi"]
+
+# Excluded directories
+exclude = [
+    ".git",
+    ".venv",
+    "src/proto/generated/",  # Exclude auto-generated protobuf files
+    "web/",  # Exclude standalone web debug interface
+]
+
+[tool.ruff.lint]
+# Rules to enable
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # Pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+
+# Rules to ignore
+ignore = [
+    "E501", # line-too-long (handled by formatter)
+    "B008", # do not perform function calls in argument defaults
+    "B006", # do not use mutable data structures for argument defaults
+    "B904", # raise ... from err
+    "C901", # too complex
+    "W191", # indentation contains tabs
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]  # scripts need to set paths before imports
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
+quote-style = "double"  # Use double quotes consistently
+docstring-code-format = true  # Format code in docstrings

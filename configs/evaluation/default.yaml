@@ -1,0 +1,61 @@
+# MobilityBench Evaluation Configuration
+evaluation:
+  metrics:
+    - tool
+    - instruction
+    - planning
+    - answer
+    - efficiency
+
+  # Tool call evaluation configuration
+  tool:
+    check_min:
+      query_poi: [keywords]
+      driving_route: [origin, destination]
+      walking_route: [origin, destination]
+      bicycling_route: [origin, destination]
+      bus_route: [origin, destination]
+      weather_query: [city]
+      reverse_geocoding: [longitude, latitude]
+      search_around_poi: [location, keywords]
+      traffic_status: [name, city]
+    check_max:
+      query_poi: [keywords, city]
+      driving_route: [origin, destination, waypoints, strategy]
+      bicycling_route: [origin, destination]
+      walking_route: [origin, destination]
+      bus_route: [origin, destination, strategy]
+      weather_query: [city, need_forecast]
+      reverse_geocoding: [longitude, latitude, radius]
+      search_around_poi: [location, keywords, radius]
+      traffic_status: [name, city]
+    defaults:
+      weather_query:
+        need_forecast: false
+      query_poi:
+        city: null
+      driving_route:
+        waypoints: []
+        strategy: []
+      bus_route:
+        strategy: "0"
+      reverse_geocoding:
+        radius: 1000
+      search_around_poi:
+        radius: 10000
+        keywords: null
+
+  # Instruction understanding evaluation configuration
+  instruction:
+    similarity_threshold: 0.7
+    model_path: ./model  # SentenceTransformer model path
+
+  # Planning evaluation configuration
+  planning:
+    alpha: 0.8  # Recall weight in DEC
+    beta: 0.2   # Precision weight in DEC
+
+  # Answer evaluation configuration
+  answer:
+    similarity_threshold: 0.8
+    distance_tolerance: 0.05  # Distance error tolerance (5%)

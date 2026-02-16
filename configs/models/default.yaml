@@ -1,0 +1,103 @@
+# MobilityBench Model Configuration
+models:
+  gpt4.1:
+    provider: openai
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    max_tokens: 8192
+    roles:
+      planner: gpt-41-0414-global
+      worker: gpt-41-0414-global
+      reporter: gpt-41-0414-global
+
+  claude-opus-4-5:
+    provider: anthropic
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    max_tokens: 8192
+    roles:
+      planner: claude-opus-4-5
+      worker: claude-opus-4-5
+      reporter: claude-opus-4-5
+
+  claude_sonnet4_5:
+    provider: anthropic
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: claude-sonnet-4-5
+      worker: claude-sonnet-4-5
+      reporter: claude-sonnet-4-5
+
+  deepseek-v3.2:
+    provider: openai
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: deepseek-v3.2
+      worker: deepseek-v3.2
+      reporter: deepseek-v3.2
+
+  gemini-3-flash-preview:
+    provider: google
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: gemini-3-flash-preview
+      worker: gemini-3-flash-preview
+      reporter: gemini-3-flash-preview
+
+  gemini-3-pro-preview:
+    provider: google
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: gemini-3-pro-preview
+      worker: gemini-3-pro-preview
+      reporter: gemini-3-pro-preview
+
+  qwen3-4b:
+    provider: qwen
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: qwen3-4b
+      worker: qwen3-4b
+      reporter: qwen3-4b
+
+  qwen3-30b:
+    provider: qwen
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: qwen3-30b-a3b-instruct-2507
+      worker: qwen3-30b-a3b-instruct-2507
+      reporter: qwen3-30b-a3b-instruct-2507
+
+  qwen3-32b:
+    provider: qwen
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: qwen3-32b
+      worker: qwen3-32b
+      reporter: qwen3-32b
+
+  qwen3-235b:
+    provider: qwen
+    base_url: ${LLM_BASE_URL}
+    api_key: ${LLM_API_KEY}
+    temperature: 0.1
+    roles:
+      planner: qwen3-235b-a22b-instruct
+      worker: qwen3-30b-a3b-instruct
+      reporter: qwen3-235b-a22b-instruct

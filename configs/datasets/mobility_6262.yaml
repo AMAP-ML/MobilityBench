@@ -1,0 +1,18 @@
+# MobilityBench Dataset Configuration
+dataset:
+  name: mobility_6262
+  path: data/datasets/combine_6262.xlsx
+  format: excel
+
+schema:
+  case_id: case_id
+  query: query
+  ground_truth_columns:
+    - tool_list
+    - llm_class
+    - route_ans
+    - weather_description
+    - poi_result
+
+splits:
+  test: 1.0
