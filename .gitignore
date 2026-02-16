@@ -212,4 +212,3 @@ web/batch_ui/uploads/
 web/batch_ui/file_metadata.json
 evaluate_old/
 nohup*
-data/
