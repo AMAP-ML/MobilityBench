@@ -80,13 +80,10 @@ class InstructionMetric(BaseMetric):
 
         info_extraction_correct = all(slots_found.values()) if slots_found else True
 
-        # Composite score
-        score = (intent_score + (1.0 if info_extraction_correct else 0.0)) / 2
-
         return MetricResult(
             case_id=case_id,
             metric_name=self.name,
-            score=score,
+            score=0.0,
             details={
                 "source_file": ground_truth.get("source_file", ""),
                 "llm_class": llm_class,

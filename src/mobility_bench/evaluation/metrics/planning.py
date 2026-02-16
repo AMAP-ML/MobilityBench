@@ -92,22 +92,17 @@ class PlanningMetric(BaseMetric):
         # Calculate DEP metric
         dep_recall, dep_score = self._compute_dep(pred_steps, gold_edges)
 
-        # Composite score
-        score = (dec_score + dep_score) / 2
-
         return MetricResult(
             case_id=case_id,
             metric_name=self.name,
-            score=score,
+            score=0.0,
             details={
                 "source_file": source_file,
                 "pred_steps": pred_steps,
                 "gold_steps": gold_steps,
                 "DEC_Recall": dec_recall,
                 "DEC_Precision": dec_precision,
-                "DEC_Score": dec_score,
                 "DEP_Recall": dep_recall,
-                "DEP_Score": dep_score,
             },
         )
 

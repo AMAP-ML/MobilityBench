@@ -42,23 +42,10 @@ class EfficiencyMetric(BaseMetric):
         if not execution_time:
             execution_time = token_usage.get("execution_time", 0)
 
-        # Efficiency score (based on token consumption, lower is better)
-        # Assuming reasonable range is 1000-10000 tokens
-        if total_tokens <= 1000:
-            score = 1.0
-        elif total_tokens <= 5000:
-            score = 0.8
-        elif total_tokens <= 10000:
-            score = 0.6
-        elif total_tokens <= 20000:
-            score = 0.4
-        else:
-            score = 0.2
-
         return MetricResult(
             case_id=case_id,
             metric_name=self.name,
-            score=score,
+            score=0.0,
             details={
                 "source_file": ground_truth.get("source_file", ""),
                 "total_tokens": total_tokens,

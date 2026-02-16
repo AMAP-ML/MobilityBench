@@ -104,14 +104,12 @@ class ReportGenerator:
         lines.append(f"Run directory: `{self.run_dir}`")
         lines.append("")
 
-        # Overall summary
+        # Overall summary with sub-dimensions
         lines.append("## Evaluation Results Summary")
         lines.append("")
 
         if not summary_df.empty:
-            # Pivot by model and metric
-            pivot = summary_df.pivot(index="model", columns="metric", values="score")
-            lines.append(pivot.to_markdown())
+            lines.append(summary_df.to_markdown(index=False))
             lines.append("")
 
         # Details for each metric
@@ -125,11 +123,27 @@ class ReportGenerator:
 
                 summary = model_results.get("summary", {})
                 if summary:
-                    lines.append(f"- Average score: {summary.get('average_score', 'N/A'):.4f}")
-                    lines.append(f"- Total cases: {summary.get('total_cases', 0)}")
-                    lines.append(f"- Successful cases: {summary.get('successful_cases', 0)}")
-                    lines.append(f"- Failed cases: {summary.get('failed_cases', 0)}")
+                    total = summary.get("total_cases", 0)
+                    success = summary.get("successful_cases", 0)
+                    failed = summary.get("failed_cases", 0)
+                    lines.append(f"- Total cases: {total}")
+                    lines.append(f"- Successful cases: {success}")
+                    lines.append(f"- Failed cases: {failed}")
                     lines.append("")
+
+                    sub_scores = summary.get("sub_scores", {})
+                    if sub_scores:
+                        lines.append("| Sub-dimension | Value |")
+                        lines.append("|:---|---:|")
+                        for dim, value in sub_scores.items():
+                            if isinstance(value, float):
+                                if value > 100:
+                                    lines.append(f"| {dim} | {value:.0f} |")
+                                else:
+                                    lines.append(f"| {dim} | {value:.4f} |")
+                            else:
+                                lines.append(f"| {dim} | {value} |")
+                        lines.append("")
 
         # Comparison analysis
         if compare_runs:
@@ -168,7 +182,8 @@ class ReportGenerator:
         th { background-color: #4CAF50; color: white; }
         tr:nth-child(even) { background-color: #f2f2f2; }
         .metric-card { background: #f9f9f9; padding: 20px; margin: 10px 0; border-radius: 5px; }
-        .score { font-size: 24px; font-weight: bold; color: #4CAF50; }
+        .sub-table { width: auto; margin: 10px 0; }
+        .sub-table th { background-color: #607D8B; }
     </style>
 </head>
 <body>
@@ -184,8 +199,7 @@ class ReportGenerator:
         # Summary table
         if not summary_df.empty:
             html_parts.append("<h2>Evaluation Results Summary</h2>")
-            pivot = summary_df.pivot(index="model", columns="metric", values="score")
-            html_parts.append(pivot.to_html(classes="summary-table"))
+            html_parts.append(summary_df.to_html(classes="summary-table", index=False))
 
         # Details for each metric
         for metric_name, metric_results in results.items():
@@ -193,13 +207,26 @@ class ReportGenerator:
 
             for model_name, model_results in metric_results.items():
                 summary = model_results.get("summary", {})
+                sub_scores = summary.get("sub_scores", {})
+
+                sub_rows = ""
+                for dim, value in sub_scores.items():
+                    if isinstance(value, float):
+                        fmt = f"{value:.0f}" if value > 100 else f"{value:.4f}"
+                    else:
+                        fmt = str(value)
+                    sub_rows += f"<tr><td>{dim}</td><td>{fmt}</td></tr>\n"
+
                 html_parts.append(f"""
     <div class="metric-card">
         <h3>{model_name}</h3>
-        <p class="score">{summary.get('average_score', 0):.4f}</p>
         <p>Total cases: {summary.get('total_cases', 0)} |
            Successful: {summary.get('successful_cases', 0)} |
            Failed: {summary.get('failed_cases', 0)}</p>
+        <table class="sub-table">
+            <tr><th>Sub-dimension</th><th>Value</th></tr>
+            {sub_rows}
+        </table>
     </div>
 """)
 
@@ -226,26 +253,22 @@ class ReportGenerator:
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-            # Summary table
+            # Summary table with sub-dimensions
             if not summary_df.empty:
                 summary_df.to_excel(writer, sheet_name="Summary", index=False)
-
-                # Pivot table
-                pivot = summary_df.pivot(index="model", columns="metric", values="score")
-                pivot.to_excel(writer, sheet_name="Pivot")
 
             # Details for each metric
             for metric_name, metric_results in results.items():
                 records = []
                 for model_name, model_results in metric_results.items():
                     summary = model_results.get("summary", {})
-                    records.append({
-                        "model": model_name,
-                        "average_score": summary.get("average_score", 0),
-                        "total_cases": summary.get("total_cases", 0),
-                        "successful_cases": summary.get("successful_cases", 0),
-                        "failed_cases": summary.get("failed_cases", 0),
-                    })
+                    sub_scores = summary.get("sub_scores", {})
+                    for dim, value in sub_scores.items():
+                        records.append({
+                            "model": model_name,
+                            "sub_dimension": dim,
+                            "value": value,
+                        })
 
                 if records:
                     df = pd.DataFrame(records)

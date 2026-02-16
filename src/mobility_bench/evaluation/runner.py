@@ -113,7 +113,7 @@ class EvaluationRunner:
         self.model_outputs = self._load_model_outputs()
 
     # Directories to skip when scanning for model outputs
-    _SKIP_DIRS = {"evaluation", "comparison", "__pycache__"}
+    _SKIP_DIRS = {"evaluation", "comparison", "reports", "__pycache__"}
 
     def _load_model_outputs(self) -> dict:
         """Load model output files."""
@@ -426,7 +426,8 @@ class EvaluationRunner:
             results: Evaluation results for each metric
 
         Returns:
-            Summary results
+            Summary with sub_scores per model per metric:
+            {metric_name: {model_name: {sub_dim: value, ...}}}
         """
         summary = {}
 
@@ -435,8 +436,8 @@ class EvaluationRunner:
 
             for model_name, model_results in metric_results.items():
                 model_summary = model_results.get("summary")
-                if model_summary:
-                    summary[metric_name][model_name] = model_summary.average_score
+                if model_summary and model_summary.sub_scores:
+                    summary[metric_name][model_name] = model_summary.sub_scores
 
         return summary
 
@@ -445,17 +446,20 @@ class EvaluationRunner:
 
         Args:
             results: Detailed results
-            summary: Summary results
+            summary: Summary results (sub_scores per metric per model)
         """
-        # Save summary table
+        # Save summary table with sub-dimensions
         summary_records = []
-        for metric_name, metric_summary in summary.items():
-            for model_name, score in metric_summary.items():
-                summary_records.append({
-                    "metric": metric_name,
-                    "model": model_name,
-                    "score": score,
-                })
+        for metric_name, metric_models in summary.items():
+            for model_name, sub_scores in metric_models.items():
+                if isinstance(sub_scores, dict):
+                    for sub_dim, value in sub_scores.items():
+                        summary_records.append({
+                            "metric": metric_name,
+                            "sub_dimension": sub_dim,
+                            "model": model_name,
+                            "value": value,
+                        })
 
         if summary_records:
             summary_df = pd.DataFrame(summary_records)
@@ -466,7 +470,6 @@ class EvaluationRunner:
         # Save complete results as JSON
         results_file = self.output_dir / "evaluation_results.json"
         with open(results_file, "w") as f:
-            # Convert to serializable format
             serializable = {}
             for metric_name, metric_results in results.items():
                 serializable[metric_name] = {}

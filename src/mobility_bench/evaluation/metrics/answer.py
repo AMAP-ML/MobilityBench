@@ -63,13 +63,10 @@ class AnswerMetric(BaseMetric):
         if delivery_success:
             accuracy = self._evaluate_by_type(answer, ground_truth, llm_class)
 
-        # Composite score
-        score = accuracy if delivery_success else 0.0
-
         return MetricResult(
             case_id=case_id,
             metric_name=self.name,
-            score=score,
+            score=0.0,
             details={
                 "source_file": source_file,
                 "llm_class": llm_class,

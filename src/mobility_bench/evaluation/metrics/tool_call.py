@@ -55,32 +55,17 @@ class ToolCallMetric(BaseMetric):
 
         metrics = self._evaluate_tool_calls(actual_calls, expected_tools)
 
-        # Calculate composite score
-        coverage = metrics["tool_selection"]["coverage"]
-        redundancy = metrics["tool_selection"]["redundancy"]
-        schema_score = metrics["schema"]["all_score"]
-        param_score = metrics["parameter_filling"]
-
-        # Composite score = (coverage * 0.3 + (1-redundancy) * 0.1 + schema * 0.3 + param * 0.3)
-        score = (
-            coverage * 0.3
-            + (1 - redundancy) * 0.1
-            + schema_score * 0.3
-            + param_score * 0.3
-        )
-
         return MetricResult(
             case_id=case_id,
             metric_name=self.name,
-            score=score,
+            score=0.0,
             details={
                 "source_file": ground_truth.get("source_file", ""),
-                "tool_selection_coverage": coverage,
-                "tool_selection_redundancy": redundancy,
+                "tool_selection_coverage": metrics["tool_selection"]["coverage"],
+                "tool_selection_redundancy": metrics["tool_selection"]["redundancy"],
                 "schema_compliance_rate": metrics["schema"]["compliance_rate"],
                 "schema_extra_field_penalty": metrics["schema"]["extra_field_penalty"],
-                "schema_all_score": schema_score,
-                "parameter_filling_accuracy": param_score,
+                "parameter_filling_accuracy": metrics["parameter_filling"],
             },
         )
 
