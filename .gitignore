@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # 
-sandbox/
+sandbox_old/
 
 # Distribution / packaging
 .Python
