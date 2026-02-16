@@ -26,7 +26,11 @@ from mobility_bench.tools.registry import ToolRegistry
 logger = logging.getLogger(__name__)
 
 # Maximum iterations for ReAct loop
-MAX_REACT_ITERATIONS = 15
+try:
+    from mobility_bench.config.settings import Settings
+    MAX_REACT_ITERATIONS = Settings.get_instance().agent.react.max_iterations
+except Exception:
+    MAX_REACT_ITERATIONS = 15
 
 
 def _parse_react_response(content: str) -> dict[str, Any]:

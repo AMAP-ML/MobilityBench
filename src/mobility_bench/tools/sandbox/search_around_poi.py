@@ -1,7 +1,4 @@
-"""Search around POI sandbox tool.
-
-Provides mock implementation of nearby POI search using cached data.
-"""
+"""周边POI搜索沙盒工具。"""
 
 import json
 import logging
@@ -17,16 +14,16 @@ from mobility_bench.tools.sandbox.utils import get_sandbox_data_dir
 
 logger = logging.getLogger(__name__)
 
-# Load sandbox data
+# === 加载沙盒数据 ===
 SANDBOX_PATH = get_sandbox_data_dir() / "search_around_poi_sandbox.json"
 
 if SANDBOX_PATH.exists():
     with open(SANDBOX_PATH, "r", encoding="utf-8") as f:
         POI_SANDBOX = json.load(f)
-    logger.info(f"Loaded search around POI sandbox data: {len(POI_SANDBOX)} locations")
+    logger.info(f"成功加载周边搜索沙盒数据: {len(POI_SANDBOX)} 个坐标")
 else:
     POI_SANDBOX = {}
-    logger.warning(f"Search around POI sandbox file not found: {SANDBOX_PATH}")
+    logger.warning(f"周边搜索沙盒文件未找到: {SANDBOX_PATH}")
 
 
 @tool
@@ -34,38 +31,41 @@ else:
 @with_state
 def search_around_poi(
     location: Annotated[
-        str, "Center point coordinate, format 'longitude,latitude', e.g. '116.481499,39.990755'"
+        str, "中心点坐标，格式为 '经度,纬度'，例如 '116.481499,39.990755'"
     ],
-    keywords: Annotated[str | None, "Search keywords, optional, e.g. gas station, restaurant"] = None,
-    radius: Annotated[int, "Search radius in meters, default 10000"] = 10000,
+    keywords: Annotated[str | None, "搜索关键词，可选，例如：加油站、餐厅"] = None,
+    radius: Annotated[int, "搜索半径，单位米，默认10000"] = 10000,
 ) -> dict:
-    """Search for nearby POI information based on center point coordinates."""
+    """根据中心点坐标，搜索周边POI信息"""
     try:
-        validate_coordinate(location, "center coordinate")
+        # 输入验证
+        validate_coordinate(location, "中心点坐标")
         validate_radius(radius, min_radius=1, max_radius=50000)
 
-        # Look up exact match location in sandbox
+        # 在沙盒中查找精确匹配的 location
         location_data = POI_SANDBOX.get(location)
         if not location_data:
-            return ToolResult.failed(f"No POI data for coordinate '{location}' in sandbox").to_dict()
+            return ToolResult.failed(f"暂不支持查询坐标 '{location}' 周边的POI信息").to_dict()
 
-        # If keywords provided, try matching; otherwise return all categories
+        # 如果提供了 keywords，尝试匹配；否则返回所有类别
         matched_pois = []
         if keywords:
             keywords_clean = keywords.strip()
+            # 尝试直接匹配 key（如 "建设银行"）
             if keywords_clean in location_data:
                 matched_pois = location_data[keywords_clean]
             else:
-                # Fuzzy match: check if POI name contains keyword
+                # 模糊匹配：遍历所有类别，看 POI 名称是否包含关键词
                 for category_pois in location_data.values():
                     for poi in category_pois:
                         if keywords_clean in poi.get("name", ""):
                             matched_pois.append(poi)
         else:
+            # 无关键词：合并所有类别的 POI
             for category_pois in location_data.values():
                 matched_pois.extend(category_pois)
 
-        # Deduplicate by (name, location)
+        # 去重（按 name + location）
         seen = set()
         unique_pois = []
         for poi in matched_pois:
@@ -75,15 +75,14 @@ def search_around_poi(
                 unique_pois.append(poi)
 
         if not unique_pois:
-            return ToolResult.failed(
-                f"No POIs matching '{keywords or 'any'}' found near '{location}' in sandbox"
-            ).to_dict()
+            logger.warning(f"在坐标 '{location}' 周边未找到与 '{keywords or '任意'}' 相关的POI")
+            return ToolResult.failed(f"在坐标 '{location}' 周边未找到与 '{keywords or '任意'}' 相关的POI").to_dict()
 
         return ToolResult.success(unique_pois).to_dict()
 
     except ValidationError as e:
-        logger.error(f"Search around POI input validation failed: {e}")
-        return ToolResult.failed(f"Input parameter error: {str(e)}").to_dict()
+        logger.error(f"周边搜索输入验证失败: {e}")
+        return ToolResult.failed(f"输入参数错误: {str(e)}").to_dict()
     except Exception as e:
-        logger.error(f"Search around POI tool error: {e}", exc_info=True)
-        return ToolResult.failed(f"Internal error: {str(e)}").to_dict()
+        logger.error(f"周边搜索工具执行异常: {e}", exc_info=True)
+        return ToolResult.failed(f"内部错误: {str(e)}").to_dict()

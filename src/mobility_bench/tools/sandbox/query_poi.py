@@ -1,4 +1,4 @@
-"""POI query sandbox tool."""
+"""POI查询沙盒工具。"""
 
 import json
 import logging
@@ -14,31 +14,31 @@ from mobility_bench.tools.sandbox.utils import get_sandbox_data_dir
 
 logger = logging.getLogger(__name__)
 
-# Load sandbox data
+# ===== 加载 JSON 数据 =====
+# 结构: {keyword: {city: poi_info}}
 SANDBOX_PATH = get_sandbox_data_dir() / "nested_poi_data.json"
 MOCK_POI_DATA = {}
 if SANDBOX_PATH.exists():
     with open(SANDBOX_PATH, "r", encoding="utf-8") as f:
         MOCK_POI_DATA = json.load(f)
 else:
-    logger.warning(f"Sandbox data not found: {SANDBOX_PATH}")
+    logger.warning(f"沙盒数据未找到: {SANDBOX_PATH}")
 
 
 def _lookup_real_result(keyword: str, city: str | None) -> dict | None:
     """
-    Lookup POI data by keyword and city.
-
-    1. If keyword not found -> return None
-    2. If keyword found:
-       - Try exact city match
-       - If match fails or no city -> return first result
+    查找逻辑：
+    1. 如果 keyword 不存在 → 返回 None
+    2. 如果 keyword 存在：
+       - 尝试用 city 精确匹配（标准化后）
+       - 匹配失败 或 未提供 city → 返回第一个结果（按 JSON 顺序）
     """
     if keyword not in MOCK_POI_DATA:
         return None
 
     city_map = MOCK_POI_DATA[keyword]
 
-    # If city provided, try to match
+    # 如果提供了 city，尝试匹配
     if city is not None and city != "":
         city_clean = city.rstrip("市") if city.endswith("市") else city
         for stored_city, poi_info in city_map.items():
@@ -46,7 +46,7 @@ def _lookup_real_result(keyword: str, city: str | None) -> dict | None:
             if city_clean == stored_clean:
                 return poi_info
 
-    # No city or match failed -> return first result
+    # 未提供 city 或匹配失败 → 返回第一个结果
     first_result = next(iter(city_map.values()))
     return first_result
 
@@ -55,10 +55,10 @@ def _lookup_real_result(keyword: str, city: str | None) -> dict | None:
 @log_io
 @with_state
 def query_poi(
-    keywords: Annotated[str, "Keywords to search, e.g. Tiananmen, KFC"],
-    city: Annotated[str | None, "City name, optional, e.g. Beijing, Shanghai"] = None,
+    keywords: Annotated[str, "要查询的关键词，例如：天安门、肯德基等"],
+    city: Annotated[str | None, "城市名称，可选，例如：北京、上海"] = None,
 ) -> dict:
-    """Search for precise location information and coordinates based on fuzzy location input."""
+    """根据模糊的位置信息，搜索得到准确的位置信息和坐标"""
     try:
         validated_keywords = validate_address(keywords)
         effective_city = city
@@ -66,26 +66,26 @@ def query_poi(
         if effective_city:
             effective_city = validate_city(effective_city)
 
-        # Look up result
+        # 查找结果
         real_result = _lookup_real_result(validated_keywords, effective_city)
 
         if real_result is None:
-            logger.info(f"Keyword '{validated_keywords}' not found in sandbox data")
-            return ToolResult.failed(f"POI '{validated_keywords}' not found in sandbox").to_dict()
+            logger.info(f"关键词 '{validated_keywords}' 在沙盒数据中未找到")
+            return ToolResult.failed(f"POI '{validated_keywords}' 在沙盒中未找到").to_dict()
 
-        # Build return result
+        # 构建返回结果
         filtered_poi = {
             "location": real_result.get("location", ""),
             "name": real_result.get("name", ""),
             "address": real_result.get("address", ""),
         }
 
-        logger.info(f"POI query success - keywords: '{validated_keywords}', city: '{effective_city}'")
+        logger.info(f"POI查询成功 - 关键词: '{validated_keywords}', 城市: '{effective_city}'")
 
         return ToolResult.success(filtered_poi).to_dict()
 
     except ValidationError as e:
-        return ToolResult.failed(f"Input parameter error: {str(e)}").to_dict()
+        return ToolResult.failed(f"输入参数错误: {str(e)}").to_dict()
     except Exception as e:
-        logger.error(f"POI query error: {e}", exc_info=True)
-        return ToolResult.failed(f"Internal error: {str(e)}").to_dict()
+        logger.error(f"POI查询异常: {e}", exc_info=True)
+        return ToolResult.failed(f"内部错误: {str(e)}").to_dict()

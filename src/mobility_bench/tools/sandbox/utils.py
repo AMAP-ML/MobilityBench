@@ -1,26 +1,26 @@
-"""Utility functions for sandbox tools."""
+"""沙盒工具公共函数。"""
 
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Default: <project_root>/sandbox/output
+# 默认: <项目根目录>/data/sandbox
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
-_DEFAULT_DATA_DIR = _PROJECT_ROOT / "sandbox" / "output"
+_DEFAULT_DATA_DIR = _PROJECT_ROOT / "data" / "sandbox"
 
 
 def get_sandbox_data_dir() -> Path:
-    """Return the sandbox data directory path.
+    """返回沙盒数据目录路径。
 
-    Reads ``sandbox_data_dir`` from Settings yaml config.
-    Relative paths are resolved against the project root.
-    Falls back to ``<project_root>/sandbox/output``.
+    从 Settings 的 agent.sandbox_data_dir 配置读取。
+    相对路径基于项目根目录解析。
+    默认: <project_root>/data/sandbox
     """
     try:
         from mobility_bench.config.settings import Settings
         settings = Settings.get_instance()
-        configured = settings.sandbox_data_dir
+        configured = settings.agent.sandbox_data_dir
         if configured:
             p = Path(configured)
             if not p.is_absolute():

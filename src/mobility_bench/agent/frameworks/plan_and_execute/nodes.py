@@ -64,7 +64,11 @@ async def planner_node(state: State, config: RunnableConfig):
             state = updated_state
 
     # Loop detection: limit maximum iterations
-    MAX_PLAN_ITERATIONS = 10
+    try:
+        from mobility_bench.config.settings import Settings
+        MAX_PLAN_ITERATIONS = Settings.get_instance().agent.plan_and_execute.max_plan_iterations
+    except Exception:
+        MAX_PLAN_ITERATIONS = 10
     if plan_iterations >= MAX_PLAN_ITERATIONS:
         logger.error(
             f"[PLANNER] Reached maximum iterations {MAX_PLAN_ITERATIONS}, terminating to avoid infinite loop"

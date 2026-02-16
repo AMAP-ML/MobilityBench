@@ -81,14 +81,63 @@ class EvaluationConfig:
 
 
 @dataclass
+class PlanAndExecuteConfig:
+    """Plan-and-Execute 框架配置。"""
+
+    max_plan_iterations: int = 10
+    max_worker_retries: int = 3
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PlanAndExecuteConfig":
+        return cls(
+            max_plan_iterations=data.get("max_plan_iterations", 10),
+            max_worker_retries=data.get("max_worker_retries", 3),
+        )
+
+
+@dataclass
+class ReactConfig:
+    """ReAct 框架配置。"""
+
+    max_iterations: int = 15
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ReactConfig":
+        return cls(
+            max_iterations=data.get("max_iterations", 15),
+        )
+
+
+@dataclass
+class AgentConfig:
+    """Agent 配置。"""
+
+    default_framework: str = "plan_and_execute"
+    sandbox_data_dir: str = "data/sandbox"
+    plan_and_execute: PlanAndExecuteConfig = field(default_factory=PlanAndExecuteConfig)
+    react: ReactConfig = field(default_factory=ReactConfig)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgentConfig":
+        pae_data = data.get("plan_and_execute", {})
+        react_data = data.get("react", {})
+        return cls(
+            default_framework=data.get("default_framework", "plan_and_execute"),
+            sandbox_data_dir=data.get("sandbox_data_dir", "data/sandbox"),
+            plan_and_execute=PlanAndExecuteConfig.from_dict(pae_data),
+            react=ReactConfig.from_dict(react_data),
+        )
+
+
+@dataclass
 class Settings:
     """Global configuration management."""
 
     models: dict[str, ModelConfig] = field(default_factory=dict)
     datasets: dict[str, DatasetConfig] = field(default_factory=dict)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    agent: AgentConfig = field(default_factory=AgentConfig)
     output_dir: str = "data/results"
-    sandbox_data_dir: str = "sandbox/output"
     log_level: str = "INFO"
 
     _instance: Optional["Settings"] = None
@@ -205,6 +254,14 @@ class Settings:
                 if "evaluation" in data:
                     self.evaluation = EvaluationConfig.from_dict(data["evaluation"])
 
+        # Load agent configuration
+        agent_config = configs_dir / "agent" / "default.yaml"
+        if agent_config.exists():
+            with open(agent_config) as f:
+                data = yaml.safe_load(f) or {}
+                if "agent" in data:
+                    self.agent = AgentConfig.from_dict(data["agent"])
+
     def _load_from_env(self):
         """Load from environment variables."""
         # LLM configuration
@@ -231,7 +288,11 @@ class Settings:
 
         # Sandbox data directory
         if "sandbox_data_dir" in data:
-            self.sandbox_data_dir = data["sandbox_data_dir"]
+            self.agent.sandbox_data_dir = data["sandbox_data_dir"]
+
+        # Agent configuration
+        if "agent" in data:
+            self.agent = AgentConfig.from_dict(data["agent"])
 
         # Model configuration
         if "models" in data:
@@ -281,7 +342,12 @@ class Settings:
             "models": {name: vars(cfg) for name, cfg in self.models.items()},
             "datasets": {name: vars(cfg) for name, cfg in self.datasets.items()},
             "evaluation": vars(self.evaluation),
+            "agent": {
+                "default_framework": self.agent.default_framework,
+                "sandbox_data_dir": self.agent.sandbox_data_dir,
+                "plan_and_execute": vars(self.agent.plan_and_execute),
+                "react": vars(self.agent.react),
+            },
             "output_dir": self.output_dir,
-            "sandbox_data_dir": self.sandbox_data_dir,
             "log_level": self.log_level,
         }
