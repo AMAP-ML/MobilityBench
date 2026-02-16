@@ -95,6 +95,18 @@ def run_benchmark(
     # Load configuration
     settings = Settings.load(config)
 
+    # Save run metadata for evaluation to reference later
+    import json
+    metadata = {
+        "run_id": run_id,
+        "models": model_list,
+        "dataset": dataset,
+        "framework": framework,
+        "sandbox": sandbox,
+    }
+    with open(output_dir / "run_metadata.json", "w", encoding="utf-8") as f:
+        json.dump(metadata, f, ensure_ascii=False, indent=2)
+
     # Load dataset
     console.print("\n[bold]Loading dataset...[/bold]")
     loader = DatasetLoader(settings)

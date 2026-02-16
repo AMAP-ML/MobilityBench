@@ -122,18 +122,38 @@ def _display_results_summary(results: dict, summary: dict):
     """Display evaluation results summary."""
     console.print("\n[bold]Evaluation Results Summary[/bold]")
 
+    # Collect all model names
+    model_names = set()
+    for metric_scores in summary.values():
+        if isinstance(metric_scores, dict):
+            model_names.update(metric_scores.keys())
+    model_names = sorted(model_names)
+
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Metric", style="cyan")
-    table.add_column("Score", justify="right")
-    table.add_column("Details", style="dim")
+    for model_name in model_names:
+        table.add_column(model_name, justify="right")
+    table.add_column("Cases", justify="right", style="dim")
 
-    for metric_name, result in results.items():
-        if isinstance(result, dict):
-            score = result.get("score", result.get("average", "N/A"))
-            detail = result.get("detail", "")
+    for metric_name, metric_scores in summary.items():
+        if not isinstance(metric_scores, dict):
+            continue
+        row = [metric_name]
+        for model_name in model_names:
+            score = metric_scores.get(model_name, "N/A")
             if isinstance(score, float):
-                score = f"{score:.4f}"
-            table.add_row(metric_name, str(score), str(detail)[:50])
+                row.append(f"{score:.4f}")
+            else:
+                row.append(str(score))
+        # Get total_cases from results
+        total_cases = "N/A"
+        metric_result = results.get(metric_name, {})
+        for model_result in metric_result.values():
+            if isinstance(model_result, dict) and "summary" in model_result:
+                total_cases = str(model_result["summary"].total_cases)
+                break
+        row.append(total_cases)
+        table.add_row(*row)
 
     console.print(table)
 
