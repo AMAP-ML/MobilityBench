@@ -31,10 +31,28 @@ To support **reproducible end-to-end evaluation**, MobilityBench includes a **de
 
 
 ## 📂 Dataset
+**MobilityBench** is a scalable benchmark for evaluating route-planning agents in real-world mobility scenarios. It is built from large-scale, anonymized mobility queries from **Amap**, organized with a comprehensive task taxonomy, and provides **structured ground truth** (required tool calls + verifiable evidence). All tool calls are executed in a **deterministic replay sandbox** for reproducible, multi-dimensional evaluation.
 
-MobilityBench dataset is collected from real-world anonymized user queries from **Amap**. We currently provide **sample data** for demonstration; the full dataset will be released progressively.
+**Scale & Coverage:** 100,000 episodes across **22** countries and **350+** cities (including metropolitan areas), with a **long-tailed** geographic distribution.
 
-**Download:** [HuggingFace - MobilityBench](https://huggingface.co/datasets/GD-ML/MobilityBench/tree/main) -> place files into `data/datasets/`
+### Scenario Distribution (11 intents)
+- **36.6%** Basic Information Retrieval
+- **9.6%** Route-Dependent Information Retrieval
+- **42.5%** Basic Route Planning
+- **11.3%** Preference-Constrained Route Planning
+
+**Download:** [HuggingFace - MobilityBench](https://huggingface.co/datasets/GD-ML/MobilityBench/tree/main) -> place files into `data/`
+
+#### Data Format
+
+| Field | Description |
+|-------|-------------|
+| `query` | User query text |
+| `context` | Context information (JSON, e.g., current location, city) |
+| `task_scenario` | Fine-grained task category |
+| `intent_family` | Coarse-grained intent category for evaluation aggregation |
+| `tool_list` | Expected tool calls (JSON array) |
+| `route_ans` | Ground truth route answer (JSON) |
 
 #### Sample Data (5 Examples)
 
@@ -45,17 +63,6 @@ MobilityBench dataset is collected from real-world anonymized user queries from 
 | 我在哪 | Geolocation Query | Basic Information Retrieval |
 | 知道离滇池会展中心有多远 | Route Property Query | Route-Dependent Information Retrieval |
 | 到寨河收费站入口不走高速 | Option-Constrained Route Planning | Preference-Constrained Route Planning |
-
-#### Data Format
-
-| Field | Description |
-|-------|-------------|
-| `query` | User query text (Chinese) |
-| `context` | Context information (JSON, e.g., current location, city) |
-| `task_scenario` | Fine-grained task category |
-| `intent_family` | Coarse-grained intent category for evaluation aggregation |
-| `tool_list` | Expected tool calls (JSON array) |
-| `route_ans` | Ground truth route answer (JSON) |
 
 ## 🚀 Getting Started
 
