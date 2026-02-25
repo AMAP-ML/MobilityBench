@@ -29,59 +29,6 @@ To support **reproducible end-to-end evaluation**, MobilityBench includes a **de
 ![Main figure](figure/main_figure.png "Overview of MobilityBench, a systematic benchmark for evaluating route-planning agents.")
 *Figure 1: Overview of MobilityBench, a systematic benchmark for evaluating route-planning agents.*
 
-### Key Features
-
-- **Multi-model evaluation**: Test multiple LLMs (OpenAI, Anthropic, Google, Qwen, DeepSeek) in parallel  
-- **Comprehensive metrics**: Five evaluation dimensions covering instruction understanding, planning quality, tool use, answer accuracy, and efficiency  
-- **Sandbox mode**: Offline evaluation with pre-cached API responses for fully reproducible results
-
-
-## 🏗️ Architecture
-
-MobilityBench supports two agent frameworks powered by LangGraph:
-
-### Plan-and-Execute Framework (Default)
-
-A **Planner-Worker-Reporter** architecture for structured task execution:
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Planner   │────▶│   Worker    │────▶│  Reporter   │
-│  (Planning) │◀────│ (Execution) │     │  (Summary)  │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                   │                   │
-       └───────────────────┴───────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  Tool Call  │
-                    │ (Map APIs)  │
-                    └─────────────┘
-```
-
-- **Planner**: Analyzes user requirements, creates structured plans, dynamically adjusts based on results
-- **Worker**: Executes tool calls based on the plan, supports parallel task execution
-- **Reporter**: Generates comprehensive natural language reports from execution results
-
-### ReAct Framework
-
-A **Reasoning-Action-Observation** loop for iterative problem solving:
-
-```
-┌─────────────────────────────────────────────┐
-│                                             │
-│  ┌──────────┐   ┌───────────┐   ┌─────────┐ │
-│  │ Reasoning│──▶│  Action   │──▶│Observat.│ │
-│  │ (Think)  │   │(Tool Call)│   │(Result) │ │
-│  └──────────┘   └───────────┘   └────┬────┘ │
-│       ▲                              │      │
-│       └──────────────────────────────┘      │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-- **Reasoning**: Analyzes current state and decides next action
-- **Action**: Executes tool call or finishes task
-- **Observation**: Processes tool results and feeds back to reasoning
 
 ## 📂 Dataset
 
@@ -109,63 +56,6 @@ MobilityBench dataset is collected from real-world anonymized user queries from 
 | `intent_family` | Coarse-grained intent category for evaluation aggregation |
 | `tool_list` | Expected tool calls (JSON array) |
 | `route_ans` | Ground truth route answer (JSON) |
-
-## 📊 Evaluation Metrics
-
-MobilityBench proposes a **multi-dimensional evaluation protocol** that goes beyond end-to-end success rate, measuring an agent's capabilities across **Instruction Understanding, Planning, Tool Use, Decision Making, and Efficiency**.
-
-### 1) Instruction Understanding
-
-- **Intent Detection (ID)**  
-  Measures whether the agent correctly identifies the query intent (one of the benchmark's scenario labels).  
-  *Scoring:* label similarity >= threshold.
-
-- **Information Extraction (IE)**  
-  Measures whether the agent correctly extracts all constraints/slots from the query (e.g., origin/destination, time constraints, preferences).  
-  *Scoring:* exact match between predicted and ground-truth constraint sets.
-
----
-
-### 2) Planning
-
-- **Task Decomposition (DEC)**  
-  Measures whether the agent decomposes the task into an appropriate sequence of atomic actions. Reported as two metrics:
-  - **DEC-P (Decomposition Precision / Coverage)**: proportion of ground-truth steps covered by predicted steps  
-  - **DEC-R (Decomposition Recall / Redundancy complement)**: proportion of predicted steps that match ground-truth steps  
-  *(Matching is determined by an action-level equivalence function.)*
-
----
-
-### 3) Tool Use
-
-- **Tool Selection (TS)**  
-  Measures whether the agent selects the correct set of tools needed for the task. Reported as:
-  - **TS-P (Tool Coverage)**: fraction of required tools selected
-  - **TS-R (Non-redundancy / 1 - redundancy)**: penalizes unnecessary tool calls
-
-- **Schema Compliance (SC)**  
-  Measures whether tool/API calls conform to tool specifications (mandatory parameters present, types/formats/ranges valid).  
-  *Scoring:* averaged compliance across all tool calls in an episode.
-
----
-
-### 4) Decision Making (Outcome Quality)
-
-- **Delivery Rate (DR)**  
-  Percentage of queries where the agent produces a **complete, executable final output**, without interruption or tool invocation failure.
-
-- **Final Pass Rate (FPR)**  
-  Percentage of queries where the final solution **satisfies all explicit and implicit user constraints** (i.e., a valid final outcome).
-
----
-
-### 5) Efficiency
-
-- **Input Tokens (IT)**  
-  Total tokens consumed as input context (system prompt + instructions + accumulated action/observation history).
-
-- **Output Tokens (OT)**  
-  Total tokens generated by the model (reflecting generation cost/latency trade-offs).
 
 ## 🚀 Getting Started
 
