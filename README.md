@@ -244,3 +244,50 @@ mobility-bench/
 | Qwen3-30B-A3B | Alibaba |
 | Qwen3-32B | Alibaba |
 | Qwen3-235B-A22B | Alibaba |
+
+## 🏗️ Supported Architecture
+
+MobilityBench supports two agent frameworks powered by LangGraph:
+
+### Plan-and-Execute Framework (Default)
+
+A **Planner-Worker-Reporter** architecture for structured task execution:
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Planner   │────▶│   Worker    │────▶│  Reporter   │
+│  (Planning) │◀────│ (Execution) │     │  (Summary)  │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                   │                   │
+       └───────────────────┴───────────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │  Tool Call  │
+                    │ (Map APIs)  │
+                    └─────────────┘
+```
+
+- **Planner**: Analyzes user requirements, creates structured plans, dynamically adjusts based on results
+- **Worker**: Executes tool calls based on the plan, supports parallel task execution
+- **Reporter**: Generates comprehensive natural language reports from execution results
+
+### ReAct Framework
+
+A **Reasoning-Action-Observation** loop for iterative problem solving:
+
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│  ┌──────────┐   ┌───────────┐   ┌─────────┐ │
+│  │ Reasoning│──▶│  Action   │──▶│Observat.│ │
+│  │ (Think)  │   │(Tool Call)│   │(Result) │ │
+│  └──────────┘   └───────────┘   └────┬────┘ │
+│       ▲                              │      │
+│       └──────────────────────────────┘      │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+- **Reasoning**: Analyzes current state and decides next action
+- **Action**: Executes tool call or finishes task
+- **Observation**: Processes tool results and feeds back to reasoning
