@@ -56,14 +56,14 @@ To support **reproducible end-to-end evaluation**, MobilityBench includes a **de
 
 #### Sample Data (5 Examples)
 
+
 | Query | Task Scenario | Intent Family |
 |-------|---------------|---------------|
-| 去大石桥不走高速 | Option-Constrained Route Planning | Preference-Constrained Route Planning |
-| 现在成都大道会堵车吗？看一下地图，会不会堵 | Traffic Info Query | Basic Route Planning |
-| 我在哪 | Geolocation Query | Basic Information Retrieval |
-| 知道离滇池会展中心有多远 | Route Property Query | Route-Dependent Information Retrieval |
-| 到寨河收费站入口不走高速 | Option-Constrained Route Planning | Preference-Constrained Route Planning |
-
+| 去大石桥不走高速<br>Go to Dashiqiao without taking the highway. | Option-Constrained Route Planning | Preference-Constrained Route Planning |
+| 现在成都大道会堵车吗？看一下地图，会不会堵<br>Is Chengdu Avenue congested now? Looking at the map, is it likely to be congested? | Traffic Info Query | Basic Route Planning |
+| 我在哪<br>Where am I? | Geolocation Query | Basic Information Retrieval |
+| 知道离滇池会展中心有多远<br>How far it is from Dianchi Convention and Exhibition Center? | Route Property Query | Route-Dependent Information Retrieval |
+| 到寨河收费站入口不走高速<br>To reach the Zhaihe toll station entrance without taking the highway. | Option-Constrained Route Planning | Preference-Constrained Route Planning |
 ## 🚀 Getting Started
 
 ### 1. Install
