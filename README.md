@@ -12,7 +12,7 @@ AMAP, Alibaba Group
 
 ¹Equal contribution. &nbsp;&nbsp;&nbsp; †Corresponding authors.
 
-<!-- [![Paper Page](https://img.shields.io/badge/Paper-Page-blue)](https://arxiv.org/abs/2602.11664) -->
+[![Paper Page](https://img.shields.io/badge/Paper-Page-blue)](https://arxiv.org/abs/2602.22638)
 [![Data Set](https://img.shields.io/badge/Data-Set-green)](https://huggingface.co/datasets/GD-ML/MobilityBench/tree/main)
 
 
@@ -298,3 +298,15 @@ A **Reasoning-Action-Observation** loop for iterative problem solving:
 - **Reasoning**: Analyzes current state and decides next action
 - **Action**: Executes tool call or finishes task
 - **Observation**: Processes tool results and feeds back to reasoning
+
+## 📚 Citation
+
+If you find our paper and code helpful for your research, please consider starring our repository ⭐ and citing our work ✏️.
+
+```bibtex
+@article{song2026mobilitybench,
+  title={MobilityBench: A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios},
+  author={Song, Zhiheng and Zhang, Jingshuai and Qin, Chuan and Wang, Chao and Chen, Chao and Xu, Longfei and Liu, Kaikui and Chu, Xiangxiang and Zhu, Hengshu},
+  journal={arXiv preprint arXiv:2602.22638},
+  year={2026}
+}
