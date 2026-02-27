@@ -299,6 +299,10 @@ A **Reasoning-Action-Observation** loop for iterative problem solving:
 - **Action**: Executes tool call or finishes task
 - **Observation**: Processes tool results and feeds back to reasoning
 
+## Benchmark Results
+![Benchmark figure](figure/benchmark.jpg "")
+*Figure 2: Overall performance.*
+
 ## 📚 Citation
 
 If you find our paper and code helpful for your research, please consider starring our repository ⭐ and citing our work ✏️.
