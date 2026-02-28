@@ -1,7 +1,11 @@
 """Instruction understanding evaluation metric."""
 
+from pathlib import Path
 
 from mobility_bench.evaluation.base import BaseMetric, MetricResult
+
+# Resolve project root from this file's location (src/mobility_bench/evaluation/metrics/instruction.py)
+_PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
 class InstructionMetric(BaseMetric):
@@ -17,13 +21,13 @@ class InstructionMetric(BaseMetric):
 
     # task_scenario to intent and slots mapping
     TASK_SCENARIO_TO_INTENT_SLOTS = {
-        "POI Query": ("POI查询", ["query"]),
+        "POI Query": ("地点查询", ["query"]),
         "Geolocation Query": ("位置查询", ["longitude", "latitude"]),
         "Nearby Query": ("附近周边搜索", ["near_poi_info", "query_poi"]),
         "Weather Query": ("天气查询", ["city", "time"]),
-        "Traffic Info Query": ("交通路况查询", ["road"]),
-        "Route Property Query": ("路线规划信息查询", ["query_start_poi", "query_end_poi"]),
-        "Arrival/Departure Time Query": ("出发出行时间规划", ["query_start_poi", "query_end_poi"]),
+        "Traffic Info Query": ("拥堵", ["road"]),
+        "Route Property Query": ("距离", ["query_start_poi", "query_end_poi"]),
+        "Arrival/Departure Time Query": ("出发时间", ["query_start_poi", "query_end_poi"]),
         "Point-to-Point Planning": ("路线规划", ["query_start_poi", "query_end_poi"]),
         "Multi-stop Planning": ("路线规划", ["query_start_poi", "query_transit_poi", "query_end_poi"]),
         "Option-Constrained Route Planning": ("路线规划", ["query_start_poi", "query_end_poi"]),
@@ -40,11 +44,25 @@ class InstructionMetric(BaseMetric):
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
-                # load embedding model such as qwen/qwen3-embedding-0.6b
-                model_path = self.config.get("model_path", "./model") if self.config else "./model"
+            except ImportError:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "sentence-transformers not installed. "
+                    "Install with: uv sync --extra eval"
+                )
+                self._model = "simple"
+                return self._model
+
+            try:
+                model_path = self.config.get("model_path", "") if self.config else ""
+                if not model_path:
+                    model_path = str(_PROJECT_ROOT / "embedding-model")
                 self._model = SentenceTransformer(model_path)
-            except Exception:
-                # Use simple string matching as fallback
+            except Exception as e:
+                import logging
+                print(
+                    f"Failed to load embedding model: {e}. Using simple fallback."
+                )
                 self._model = "simple"
         return self._model
 

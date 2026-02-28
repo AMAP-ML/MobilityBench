@@ -1,9 +1,9 @@
 # MobilityBench Evaluation Configuration
 evaluation:
   metrics:
-    - tool
     - instruction
     - planning
+    - tool
     - answer
     - efficiency
 
@@ -48,7 +48,7 @@ evaluation:
   # Instruction understanding evaluation configuration
   instruction:
     similarity_threshold: 0.7
-    model_path: ./model  # SentenceTransformer model path
+    model_path: ./embedding-model  # SentenceTransformer model path
 
   # Planning evaluation configuration
   planning:
