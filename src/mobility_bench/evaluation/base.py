@@ -115,8 +115,8 @@ class BaseMetric(ABC):
 
     # Fields to skip when aggregating sub-dimensions from details
     _SKIP_DETAIL_FIELDS = {
-        "source_file", "llm_class", "slots_found", "pred_steps", "gold_steps",
-        "note", "task_scenario", "intent_family",
+        "source_file", "task_scenario", "slots_found", "pred_steps", "gold_steps",
+        "note", "intent_family",
     }
 
     def aggregate(self, results: list[MetricResult]) -> MetricSummary:

@@ -16,42 +16,47 @@ class PlanningMetric(BaseMetric):
     name = "planning"
     description = "Planning process evaluation"
 
-    # Scenario standard configuration: source_file -> (required steps, dependency edges)
-    GOLDEN_CONFIG = {
-        "std_df_no_traffic": (
-            ["locating", "route_planning"],
-            [("locating", "route_planning")],
-        ),
-        "std_depart_time_ans": (
-            ["locating", "driving_route_planning", "time_calculation"],
-            [("locating", "driving_route_planning"), ("driving_route_planning", "time_calculation")],
-        ),
-        "std_weather_ans": (
-            ["weather_query"],
-            [],
-        ),
-        "std_traffic_ans": (
-            ["traffic_query"],
-            [],
-        ),
-        "std_poi_ans": (
-            ["poi_query"],
-            [],
-        ),
+    # task_scenario -> (required steps, dependency edges)
+    TASK_SCENARIO_TO_GOLDEN = {
+        "POI Query": (["定位"], []),
+        "Geolocation Query": (["定位"], []),
+        "Nearby Query": (["定位", "周边搜"], [("定位", "周边搜")]),
+        "Weather Query": (["天气查询"], []),
+        "Traffic Info Query": (["定位", "路况查询"], [("定位", "路况查询")]),
+        "Route Property Query": (["定位", "路线规划"], [("定位", "路线规划")]),
+        "Arrival/Departure Time Query": (["定位", "驾车路线规划", "时间倒推计算"], [("定位", "驾车路线规划"), ("驾车路线规划", "时间倒推计算")]),
+        "Point-to-Point Planning": (["定位", "路线规划"], [("定位", "路线规划")]),
+        "Multi-stop Planning": (["定位", "途径点路线规划"], [("定位", "途径点路线规划")]),
+        "Option-Constrained Route Planning": (["定位", "有偏好的路线规划"], [("定位", "有偏好的路线规划")]),
+        "Route-Constrained Planning": (["定位", "路线规划"], [("定位", "路线规划")]),
     }
 
     # Atomic task regex patterns
     ATOMIC_TASK_REGEX = {
-        "locating": r"(locat|query.*position|get.*coordinate|POI.*query.*coordinate)",
-        "driving_route_planning": r"(driv|car).*(route|navigation|planning)",
-        "walking_route_planning": r"(walk|foot).*(route|navigation|planning)",
-        "cycling_route_planning": r"(cycl|bike|bicycle).*(route|navigation|planning)",
-        "transit_route_planning": r"(transit|bus|subway).*(route|navigation|planning)",
-        "route_planning": r"(route|navigation).*(planning|query)",
-        "weather_query": r"(weather|temperature).*(query|get)",
-        "traffic_query": r"(traffic|congestion).*(query|get)",
-        "poi_query": r"(POI|location|place).*(query|search)",
-        "time_calculation": r"(time|depart).*(calculat|comput)",
+        "定位": r"(查询|获取|得到|查找|了解|定位|我在哪|搜一下|模糊信息坐标查询|坐标查询|POI查询|地点查询).*?(位置|坐标|经纬度|当前位置|起点|在哪|地址|：)|"
+                r"(位置|坐标|经纬度|当前位置|起点|在哪|地址).*?(查询|获取|得到|查找|了解|定位|我在哪|搜一下)",
+        "路况查询": r"(查询|获取|得到|查找|了解|搜一下).*?(路况|拥堵|堵车|交通状况|通行情况)",
+        "天气查询": r"(查询|获取|得到|查找|了解|搜一下|查一下).*?(天气|气温|温度|下雨|晴天|预报|气候)|"
+                    r"(天气|气温|温度|下雨|晴天|预报|气候).*?(查询|获取|得到|查找|了解|搜一下|查一下)",
+        "步行路线规划": r"((步行|走路|走).*?(路线规划|规划路线|怎么走|导航|路径|规划))|"
+                       r"((路线规划|规划路线|怎么走|导航|路径|规划).*?(步行|走路|走))",
+        "骑行路线规划": r"((骑行|骑车|自行车|单车).*?(路线规划|规划路线|怎么走|导航|路径|规划))|"
+                       r"((路线规划|规划路线|怎么走|导航|路径|规划).*?(骑行|骑车|自行车|单车))",
+        "公交路线规划": r"((公交|坐公交|乘公交|公交车|巴士|[\d]+路).*?(路线规划|规划路线|怎么走|导航|路径|规划))|"
+                       r"((路线规划|规划路线|怎么走|导航|路径|规划).*?(公交|坐公交|乘公交|公交车|巴士|[\d]+路))",
+        "驾车路线规划": r"((驾车|开车|自驾).*?(路线规划|规划路线|怎么走|导航|路径|规划))|"
+                       r"((路线规划|规划路线|怎么走|导航|路径|规划).*?(驾车|开车|自驾))",
+        "有偏好的路线规划": r"((偏好|避开|避免|最短|最快|高速|不走高速|最少红绿灯|高速优先).*?(路线规划|规划路线|怎么走|导航|路径|规划))|"
+                          r"((路线规划|规划路线|怎么走|导航|路径|规划).*?(偏好|避开|避免|最短|最快|高速|不走高速|最少红绿灯|高速优先))|"
+                          r"(驾车路线规划.*?(不走高速|高速优先|避开|偏好))",
+        "途径点路线规划": r"((途径点|途经点|中转点|经过|途径|途经.*?点|路过.*?点|经停).*?(路线规划|规划路线|怎么走|导航|路径|规划))|"
+                        r"((路线规划|规划路线|怎么走|导航|路径|规划).*?(途径点|途经点|中转点|经过|途径|途经.*?点|路过.*?点|经停))",
+        "路线规划": r"(路线规划|规划路线|怎么走|导航|路径|算路)",
+        "公交信息查询": r"(查询|获取|得到|查找|了解|搜一下).*?(公交|公交车|巴士).*?(信息|站台|首末班)",
+        "路径规划查询距离": r"(路线规划|规划路线|怎么走|导航|路径|计算|查询).*?(距离|多远|公里|路程|到.*的距离)",
+        "时间倒推计算": r"(出发时间|什么时候出发|几点走|提前多久|倒推|推算)",
+        "周边搜": r"(周边|附近|周围|旁边|邻近).*?(搜索|找|查|有什么|有哪些)|"
+                 r"(搜索|找|查|有什么|有哪些).*?(周边|附近|周围|旁边|邻近)"
     }
 
     def __init__(self, config: dict | None = None):
@@ -66,18 +71,22 @@ class PlanningMetric(BaseMetric):
         ground_truth: dict,
     ) -> MetricResult:
         """Compute single evaluation result."""
-        source_file = ground_truth.get("source_file", "")
+        task_scenario = ground_truth.get("task_scenario", "")
         steps_text = prediction.get("steps", "")
 
-        # Get scenario configuration
-        gold_steps, gold_edges = self._get_golden_config(source_file)
+        # Get scenario configuration based on task_scenario
+        gold_steps, gold_edges = self._get_golden_config(task_scenario)
 
         if not gold_steps:
             return MetricResult(
                 case_id=case_id,
                 metric_name=self.name,
                 score=1.0,
-                details={"source_file": source_file, "intent_family": ground_truth.get("intent_family", ""), "note": "No standard configuration"},
+                details={
+                    "task_scenario": task_scenario,
+                    "intent_family": ground_truth.get("intent_family", ""),
+                    "note": "No standard configuration"
+                },
             )
 
         # Extract steps from prediction text
@@ -91,22 +100,25 @@ class PlanningMetric(BaseMetric):
             metric_name=self.name,
             score=0.0,
             details={
-                "source_file": source_file,
+                "task_scenario": task_scenario,
                 "intent_family": ground_truth.get("intent_family", ""),
                 "DEC_P": dec_precision,
                 "DEC_R": dec_recall,
             },
         )
 
-    def _get_golden_config(self, source_file: str) -> tuple:
-        """Get scenario standard configuration."""
+    def _get_golden_config(self, task_scenario: str) -> tuple:
+        """Get scenario standard configuration based on task_scenario."""
+        if not task_scenario:
+            return ([], [])
+
         # Try exact match
-        if source_file in self.GOLDEN_CONFIG:
-            return self.GOLDEN_CONFIG[source_file]
+        if task_scenario in self.TASK_SCENARIO_TO_GOLDEN:
+            return self.TASK_SCENARIO_TO_GOLDEN[task_scenario]
 
         # Try partial match
-        for key, value in self.GOLDEN_CONFIG.items():
-            if key in source_file:
+        for key, value in self.TASK_SCENARIO_TO_GOLDEN.items():
+            if key in task_scenario or task_scenario in key:
                 return value
 
         return ([], [])

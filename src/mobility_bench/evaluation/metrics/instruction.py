@@ -15,19 +15,19 @@ class InstructionMetric(BaseMetric):
     name = "instruction"
     description = "Instruction understanding evaluation"
 
-    # LLM_CLASS to intent and slots mapping
-    LLM_CLASS_TO_INTENT_SLOTS = {
-        "complex-departure-time": ("Departure time planning", ["query_start_poi", "query_end_poi"]),
-        "route-planning-driving": ("Driving route planning", ["query_start_poi", "query_end_poi"]),
-        "route-planning-walking": ("Walking route planning", ["query_start_poi", "query_end_poi"]),
-        "route-planning-cycling": ("Cycling route planning", ["query_start_poi", "query_end_poi"]),
-        "route-planning-transit": ("Transit route planning", ["query_start_poi", "query_end_poi"]),
-        "route-planning-taxi": ("Taxi route planning", ["query_start_poi", "query_end_poi"]),
-        "info-query-weather": ("Weather query", ["city"]),
-        "info-query-poi": ("POI query", ["keywords"]),
-        "info-query-traffic": ("Traffic query", ["road_name", "city"]),
-        "info-query-distance": ("Distance query", ["query_start_poi", "query_end_poi"]),
-        "info-query-location": ("Location query", ["keywords"]),
+    # task_scenario to intent and slots mapping
+    TASK_SCENARIO_TO_INTENT_SLOTS = {
+        "POI Query": ("POI查询", ["query"]),
+        "Geolocation Query": ("位置查询", ["longitude", "latitude"]),
+        "Nearby Query": ("附近周边搜索", ["near_poi_info", "query_poi"]),
+        "Weather Query": ("天气查询", ["city", "time"]),
+        "Traffic Info Query": ("交通路况查询", ["road"]),
+        "Route Property Query": ("路线规划信息查询", ["query_start_poi", "query_end_poi"]),
+        "Arrival/Departure Time Query": ("出发出行时间规划", ["query_start_poi", "query_end_poi"]),
+        "Point-to-Point Planning": ("路线规划", ["query_start_poi", "query_end_poi"]),
+        "Multi-stop Planning": ("路线规划", ["query_start_poi", "query_transit_poi", "query_end_poi"]),
+        "Option-Constrained Route Planning": ("路线规划", ["query_start_poi", "query_end_poi"]),
+        "Route-Constrained Planning": ("路线规划", ["query_start_poi", "query_end_poi"]),
     }
 
     def __init__(self, config: dict | None = None):
@@ -40,6 +40,7 @@ class InstructionMetric(BaseMetric):
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
+                # load embedding model such as qwen/qwen3-embedding-0.6b
                 model_path = self.config.get("model_path", "./model") if self.config else "./model"
                 self._model = SentenceTransformer(model_path)
             except Exception:
@@ -54,13 +55,13 @@ class InstructionMetric(BaseMetric):
         ground_truth: dict,
     ) -> MetricResult:
         """Compute single evaluation result."""
-        llm_class = ground_truth.get("llm_class", "")
+        task_scenario = ground_truth.get("task_scenario", "")
         thinking = prediction.get("thinking", "")
         pred_intent = prediction.get("intent", "")
         steps = prediction.get("steps", "")
 
-        # Get expected intent and slots
-        expected_intent, required_slots = self._get_intent_slots(llm_class)
+        # Get expected intent and slots based on task_scenario
+        expected_intent, required_slots = self._get_intent_slots(task_scenario)
 
         # Calculate intent similarity
         intent_score = self._compute_similarity(pred_intent, expected_intent)
@@ -72,7 +73,10 @@ class InstructionMetric(BaseMetric):
         for slot in required_slots:
             # Simple check if slot is mentioned in text
             slot_value = ground_truth.get(slot, "")
-            if slot_value and str(slot_value) in combined_text:
+            if not slot_value:
+                # Slot has no ground truth value, skip it
+                continue
+            if str(slot_value) in combined_text:
                 slots_found[slot] = True
             else:
                 slots_found[slot] = False
@@ -86,21 +90,24 @@ class InstructionMetric(BaseMetric):
             details={
                 "source_file": ground_truth.get("source_file", ""),
                 "intent_family": ground_truth.get("intent_family", ""),
-                "llm_class": llm_class,
+                "task_scenario": task_scenario,
                 "ID": 1.0 if intent_correct else 0.0,
                 "IE": 1.0 if info_extraction_correct else 0.0,
             },
         )
 
-    def _get_intent_slots(self, llm_class: str) -> tuple:
-        """Get intent and slots."""
+    def _get_intent_slots(self, task_scenario: str) -> tuple:
+        """Get intent and slots based on task_scenario."""
+        if not task_scenario:
+            return ("Unknown intent", [])
+
         # Try exact match
-        if llm_class in self.LLM_CLASS_TO_INTENT_SLOTS:
-            return self.LLM_CLASS_TO_INTENT_SLOTS[llm_class]
+        if task_scenario in self.TASK_SCENARIO_TO_INTENT_SLOTS:
+            return self.TASK_SCENARIO_TO_INTENT_SLOTS[task_scenario]
 
         # Try partial match
-        for key, value in self.LLM_CLASS_TO_INTENT_SLOTS.items():
-            if key in llm_class or llm_class in key:
+        for key, value in self.TASK_SCENARIO_TO_INTENT_SLOTS.items():
+            if key in task_scenario or task_scenario in key:
                 return value
 
         # Default return
@@ -111,16 +118,21 @@ class InstructionMetric(BaseMetric):
         if not text1 or not text2:
             return 0.0
 
+        # Substring containment check (handles Chinese text where split() doesn't work)
+        if text2 in text1 or text1 in text2:
+            return 1.0
+
         model = self._get_similarity_model()
 
         if model == "simple":
-            # Simple word overlap similarity
-            words1 = set(text1.lower().split())
-            words2 = set(text2.lower().split())
-            if not words1 or not words2:
+            # Character-level Jaccard similarity for better CJK support
+            chars1 = set(text1.lower())
+            chars2 = set(text2.lower())
+            if not chars1 or not chars2:
                 return 0.0
-            overlap = len(words1 & words2)
-            return overlap / max(len(words1), len(words2))
+            intersection = len(chars1 & chars2)
+            union = len(chars1 | chars2)
+            return intersection / union if union else 0.0
 
         try:
             from sentence_transformers import util

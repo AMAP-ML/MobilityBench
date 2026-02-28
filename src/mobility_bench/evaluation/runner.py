@@ -414,6 +414,11 @@ class EvaluationRunner:
                 gt["weather_description"] = case.ground_truth.weather_description
                 gt["poi_result"] = case.ground_truth.poi_result
 
+            # Include metadata fields (e.g. query_start_poi, query_end_poi, city, road)
+            # so that metrics like instruction can access slot values for IE evaluation.
+            if case.metadata:
+                gt.update(case.metadata)
+
             ground_truths.append(gt)
 
         return ground_truths
