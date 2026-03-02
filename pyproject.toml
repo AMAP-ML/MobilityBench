@@ -46,6 +46,8 @@ dependencies = [
     "sentence-transformers>=2.2.0",
     # LLM providers
     "langchain_google_genai>=4.2.0",
+    "cpca>=0.5.5",
+    "setuptools<70",
 ]
 
 # CLI entry point
