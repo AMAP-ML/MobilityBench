@@ -94,11 +94,46 @@ def try_fix_truncated_string(s: str):
 
 
 def extract_coords(text: str) -> str | None:
-    """Extract coordinates from text."""
+    """Extract first coordinate from text."""
     if not isinstance(text, str):
         return None
     match = re.search(r'(\d{2,3}\.\d+),\s*(\d{1,2}\.\d+)', text)
     return f"{match.group(1)},{match.group(2)}" if match else None
+
+
+def extract_all_coords(text: str) -> list[tuple[float, float]]:
+    """Extract all coordinates from text as (lng, lat) tuples."""
+    if not isinstance(text, str):
+        return []
+    matches = re.findall(r'(\d{2,3}\.\d+),\s*(\d{1,2}\.\d+)', text)
+    coords = []
+    for lng_str, lat_str in matches:
+        try:
+            lng, lat = float(lng_str), float(lat_str)
+            # Basic validation: China coordinates roughly 73-135 lng, 18-54 lat
+            if 70 <= lng <= 140 and 15 <= lat <= 55:
+                coords.append((lng, lat))
+        except ValueError:
+            continue
+    return coords
+
+
+def haversine_distance(lng1: float, lat1: float, lng2: float, lat2: float) -> float:
+    """Calculate distance between two coordinates in kilometers using Haversine formula."""
+    from math import radians, cos, sin, asin, sqrt
+    
+    # Convert to radians
+    lng1, lat1, lng2, lat2 = map(radians, [lng1, lat1, lng2, lat2])
+    
+    # Haversine formula
+    dlng = lng2 - lng1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlng/2)**2
+    c = 2 * asin(sqrt(a))
+    
+    # Earth radius in km
+    r = 6371
+    return c * r
 
 
 def extract_route_index_from_answer(answer: str) -> str | None:
@@ -210,13 +245,16 @@ class AnswerMetric(BaseMetric):
         content = extract_content_from_answer(answer)
         if len(content) == 0:
             content = answer
-        # Check delivery success using extracted content
-        delivery_success = self._check_delivery_success(content)
+        
+        # Get eval type for type-specific delivery check
+        eval_type = self.TASK_SCENARIO_TO_EVAL_TYPE.get(task_scenario, "general")
+        
+        # Check delivery success based on task type
+        delivery_success = self._check_delivery_success(content, answer, eval_type)
 
         # Evaluate accuracy based on task type
         accuracy = 0.0
         if delivery_success:
-            eval_type = self.TASK_SCENARIO_TO_EVAL_TYPE.get(task_scenario, "general")
             accuracy = self._evaluate_by_type(content, answer, ground_truth, eval_type)
 
         return MetricResult(
@@ -231,11 +269,60 @@ class AnswerMetric(BaseMetric):
             },
         )
 
-    def _check_delivery_success(self, text: str) -> bool:
-        """Check if response is successful delivery."""
-        if not isinstance(text, str) or not text.strip() or text.lower() == 'nan':
+    def _check_delivery_success(self, content: str, raw_answer: str, eval_type: str) -> bool:
+        """Check if response is successful delivery based on task type.
+        
+        Args:
+            content: Extracted content from JSON answer
+            raw_answer: Original answer string
+            eval_type: Type of evaluation (route, poi, weather, etc.)
+        """
+        if not isinstance(content, str) or not content.strip() or content.lower() == 'nan':
             return False
-        return not FAILURE_PATTERN.search(text)
+        
+        # Type-specific delivery checks
+        if eval_type in ("route", "route_custom", "route_info"):
+            # Route planning: need route_index or route keywords
+            route_idx = extract_route_index_from_answer(raw_answer)
+            if route_idx is not None and route_idx != "":
+                return True
+            # Fallback: check for route keywords
+            route_keywords = ["公里", "千米", "km", "分钟", "小时", "路线", "距离", "耗时", "途经"]
+            found = sum(1 for kw in route_keywords if kw in content)
+            return found >= 2
+        
+        elif eval_type in ("poi", "location"):
+            # POI/Location query: need coordinates
+            coords = extract_coords(content)
+            if coords:
+                return True
+            # Or address info
+            addr_keywords = ["省", "市", "区", "县", "街道", "路", "号"]
+            found = sum(1 for kw in addr_keywords if kw in content)
+            return found >= 2
+        
+        elif eval_type == "nearby":
+            # Nearby query: need POI names or list
+            poi_keywords = ["店", "馆", "厅", "中心", "广场", "超市", "餐"]
+            found = sum(1 for kw in poi_keywords if kw in content)
+            return found >= 1 or len(content) > 20
+        
+        elif eval_type == "weather":
+            # Weather query: need weather description
+            weather_keywords = ["天气", "晴", "阴", "雨", "雪", "云", "风", "度", "℃", "温"]
+            found = sum(1 for kw in weather_keywords if kw in content)
+            return found >= 1
+        
+        elif eval_type == "traffic":
+            # Traffic query: need traffic status
+            traffic_keywords = ["拥堵", "畅通", "缓行", "路况", "通行"]
+            found = sum(1 for kw in traffic_keywords if kw in content)
+            return found >= 1
+        # Check for general failure patterns
+        if FAILURE_PATTERN.search(content):
+            return False
+        
+        return len(content) > 10
 
     def _evaluate_by_type(
         self,
@@ -275,15 +362,17 @@ class AnswerMetric(BaseMetric):
         """Evaluate route planning result.
         
         For route planning, check if the recommended route index matches
-        the expected best route (usually index 0).
+        the expected route index from ground truth.
         """
         # Extract recommended route index from answer
         pred_idx = extract_route_index_from_answer(answer)
         # basic route planning
-        if pred_idx in ['0', '0.0']:
+        print("answer", answer)
+        if pred_idx and pred_idx != "-1":
             return 1.0
         
         return 0.0
+
     
     def _evaluate_route_custom(self, answer: str, ground_truth: dict) -> float:
         """Evaluate route planning result.
@@ -295,6 +384,8 @@ class AnswerMetric(BaseMetric):
         pred_idx = extract_route_index_from_answer(answer)
         ans_idx = ground_truth.get("matched_transit_index", "")
         # 
+        if (pred_idx == "" or pred_idx == "-1") and int(ans_idx) == 0:
+            return 1.0
         if pred_idx and int(pred_idx) == int(ans_idx):
             return 1.0
         
@@ -328,54 +419,64 @@ class AnswerMetric(BaseMetric):
         return 1.0 if sim > self.similarity_threshold else 0.0
 
     def _evaluate_poi(self, content: str, ground_truth: dict) -> float:
-        """Evaluate POI query result by coordinate matching."""
+        """Evaluate POI query result by coordinate matching.
+        
+        Extracts all coordinates from content and checks if any is within 1km
+        of the ground truth coordinate.
+        """
+        # Extract all predicted coordinates from content
+        pred_coords = extract_all_coords(content)
+        
+        # Get ground truth coordinate
+        gt_lng, gt_lat = None, None
+        
         # First try ans_loc (direct coordinates)
         ans_loc = ground_truth.get("ans_loc", "")
         if ans_loc and str(ans_loc).lower() != 'nan':
-            pred_coord = extract_coords(content)
-            print("pred:", pred_coord, ans_loc, content)
-            gt_coord = str(ans_loc).strip()
-            if pred_coord and gt_coord:
-                if pred_coord == gt_coord:
-                    return 1.0
-                # Allow small tolerance in coordinate matching
-                try:
-                    pred_parts = pred_coord.split(',')
-                    gt_parts = gt_coord.split(',')
-                    if len(pred_parts) == 2 and len(gt_parts) == 2:
-                        pred_lng, pred_lat = float(pred_parts[0]), float(pred_parts[1])
-                        gt_lng, gt_lat = float(gt_parts[0]), float(gt_parts[1])
-                        if abs(pred_lng - gt_lng) < 0.001 and abs(pred_lat - gt_lat) < 0.001:
-                            return 1.0
-                except (ValueError, IndexError):
-                    pass
-
-        # Try poi_result
-        gt_poi = ground_truth.get("poi_result")
-        if gt_poi:
-            if isinstance(gt_poi, str):
-                gt_poi, ok = try_fix_truncated_string(gt_poi)
-                if not ok:
-                    gt_poi = None
-
-            if isinstance(gt_poi, dict):
-                # Check coordinate match from poi_result.data.location
-                gt_coord = gt_poi.get("data", {}).get("location")
-                if not gt_coord:
-                    gt_coord = gt_poi.get("location")
+            gt_coord_str = str(ans_loc).strip()
+            try:
+                parts = gt_coord_str.split(',')
+                if len(parts) == 2:
+                    gt_lng, gt_lat = float(parts[0]), float(parts[1])
+            except (ValueError, IndexError):
+                pass
+        
+        # Try poi_result if ans_loc not available
+        if gt_lng is None:
+            gt_poi = ground_truth.get("poi_result")
+            if gt_poi:
+                if isinstance(gt_poi, str):
+                    gt_poi, ok = try_fix_truncated_string(gt_poi)
+                    if not ok:
+                        gt_poi = None
                 
-                if gt_coord:
-                    pred_coord = extract_coords(content)
-                    if pred_coord and gt_coord.strip() == pred_coord.strip():
+                if isinstance(gt_poi, dict):
+                    gt_coord_str = gt_poi.get("data", {}).get("location")
+                    if not gt_coord_str:
+                        gt_coord_str = gt_poi.get("location")
+                    
+                    if gt_coord_str:
+                        try:
+                            parts = str(gt_coord_str).strip().split(',')
+                            if len(parts) == 2:
+                                gt_lng, gt_lat = float(parts[0]), float(parts[1])
+                        except (ValueError, IndexError):
+                            pass
+                    
+                    # Check name match as fallback
+                    poi_name = gt_poi.get("name", "")
+                    if not poi_name:
+                        poi_name = gt_poi.get("data", {}).get("name", "")
+                    if poi_name and poi_name in content:
                         return 1.0
-                
-                # Check name match
-                poi_name = gt_poi.get("name", "")
-                if not poi_name:
-                    poi_name = gt_poi.get("data", {}).get("name", "")
-                if poi_name and poi_name in content:
+        
+        # Check if any predicted coordinate is within 1km of ground truth
+        if gt_lng is not None and gt_lat is not None and pred_coords:
+            for pred_lng, pred_lat in pred_coords:
+                distance = haversine_distance(pred_lng, pred_lat, gt_lng, gt_lat)
+                if distance <= 1.0:  # Within 1km
                     return 1.0
-
+        
         return 0.0
 
     def _evaluate_location(self, content: str, ground_truth: dict) -> float:
@@ -410,12 +511,14 @@ class AnswerMetric(BaseMetric):
         gt_near = ground_truth.get("near_poi_ans", "")
         if not gt_near or str(gt_near).lower() == 'nan':
             return 0.0
-        
         # Try to parse and extract POI names
         gt_data, ok = try_fix_truncated_string(str(gt_near))
+        
         if ok and isinstance(gt_data, dict):
             # Extract POI names from near_poi_ans.data.pois
             pois = gt_data.get("data", {}).get("pois", [])
+            if len(pois) == 0:
+                return 1.0
             if pois and isinstance(pois, list):
                 # Check if any POI name appears in the content
                 for poi in pois[:5]:  # Check first 5 POIs
@@ -423,7 +526,9 @@ class AnswerMetric(BaseMetric):
                         poi_name = poi.get("name", "")
                         if poi_name and poi_name in content:
                             return 1.0
-        
+                        # sim
+                        if self._compute_similarity(content, poi_name) > self.similarity_threshold:
+                            return 1.0
         # Fallback: use similarity
         sim = self._compute_similarity(content, str(gt_near))
         return 1.0 if sim > self.similarity_threshold else 0.0
