@@ -60,7 +60,7 @@ class InstructionMetric(BaseMetric):
                 self._model = SentenceTransformer(model_path)
             except Exception as e:
                 import logging
-                print(
+                logging.getLogger(__name__).warning(
                     f"Failed to load embedding model: {e}. Using simple fallback."
                 )
                 self._model = "simple"

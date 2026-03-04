@@ -367,7 +367,7 @@ class AnswerMetric(BaseMetric):
         # Extract recommended route index from answer
         pred_idx = extract_route_index_from_answer(answer)
         # basic route planning
-        print("answer", answer)
+        # print("answer", answer)
         if pred_idx and pred_idx != "-1":
             return 1.0
         
