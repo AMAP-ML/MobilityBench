@@ -1,6 +1,6 @@
 
 
-# MobilityBench: A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios
+# [KDD 2026 Oral] MobilityBench: A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios
 
 <div align="center">
 Zhiheng Song¹, Jingshuai Zhang¹, Chuan Qin†, Chao Wang, Chao Chen, Longfei Xu, Kaikui Liu, Xiangxiang Chu, Hengshu Zhu†
@@ -18,7 +18,6 @@ AMAP, Alibaba Group
 
 </div>
 
-> **Note:** This work is currently under review. The full dataset will be released progressively.
 
 ## 📖 Overview
 
