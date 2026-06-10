@@ -1,20 +1,17 @@
-
-
-# [KDD 2026 Oral] MobilityBench: A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios
+# MobilityBench: A Benchmark for Evaluating Route-Planning Agents in Real-World Mobility Scenarios
 
 <div align="center">
-Zhiheng Song¹, Jingshuai Zhang¹, Chuan Qin†, Chao Wang, Chao Chen, Longfei Xu, Kaikui Liu, Xiangxiang Chu, Hengshu Zhu†
 
-<br>
+**Zhiheng Song¹, Jingshuai Zhang¹, Chuan Qin†, Chao Wang, Chao Chen, Longfei Xu, Kaikui Liu, Xiangxiang Chu, Hengshu Zhu†**
+
 AMAP, Alibaba Group
 
-<br>
+¹Equal contribution &nbsp;&nbsp; †Corresponding authors
 
-¹Equal contribution. &nbsp;&nbsp;&nbsp; †Corresponding authors.
+[![Paper](https://img.shields.io/badge/Paper-arXiv-b31b1b)](https://arxiv.org/abs/2602.22638)
+[![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-yellow)](https://huggingface.co/datasets/GD-ML/MobilityBench/tree/main)
 
-[![Paper Page](https://img.shields.io/badge/Paper-Page-blue)](https://arxiv.org/abs/2602.22638)
-[![Data Set](https://img.shields.io/badge/Data-Set-green)](https://huggingface.co/datasets/GD-ML/MobilityBench/tree/main)
-
+**Accepted at KDD 2026 (Oral)**
 
 </div>
 
