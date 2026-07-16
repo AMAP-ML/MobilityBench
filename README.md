@@ -22,7 +22,7 @@ AMAP, Alibaba Group
 
 To support **reproducible end-to-end evaluation**, MobilityBench includes a **deterministic API-replay sandbox** that removes environmental variance from live services. It also introduce a **multi-dimensional evaluation protocol** centered on **outcome validity**, complemented by evaluations of **instruction understanding**, **planning**, **tool use**, and **efficiency**. 
 
-![Main figure](figure/main_figure.png "Overview of MobilityBench, a systematic benchmark for evaluating route-planning agents.")
+![Main figure](figure/overview2.png "Overview of MobilityBench, a systematic benchmark for evaluating route-planning agents.")
 *Figure 1: Overview of MobilityBench, a systematic benchmark for evaluating route-planning agents.*
 
 
